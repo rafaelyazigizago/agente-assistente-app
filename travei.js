@@ -7,6 +7,7 @@
 import { $, el, avisar, comIcone } from './ui.js';
 import * as dados from './dados.js';
 import { passoSemIA, ehCrise, CONTATOS_CRISE, AVISO_SEM_IA } from './base-passos.js';
+import { botaoFale, ligarCampo, aoEnviar } from './fale.js';
 
 export const ABERTURA = 'O que está acontecendo com esta tarefa? Escreva ou fale do seu jeito. Pode ser “não sei dizer”.';
 export const ABERTURA_GERAL = 'O que está acontecendo? Pode ser uma tarefa ou algo mais geral. Escreva ou fale do seu jeito. Pode ser “não sei dizer”.';
@@ -101,10 +102,11 @@ export function abrirTravei(alvo = null) {
       el('h1', { classe: 'titulo', id: 'titulo-travei' }, 'Travei'),
       el('div', { classe: 'tv-conversa', 'aria-live': 'polite' }))),
     el('div', { classe: 'tv-rodape' }, el('div', { classe: 'dentro' }, el('div', { classe: 'linha' }, campo, envio,
-      comIcone('mic', el('button', { type: 'button', classe: 'fale tv-fale', onclick: (e) => falar(e.currentTarget) }, 'Fale'))))),
+      faleDoTravei()))),
     el('div', { classe: 'emergencia' }, el('div', { classe: 'dentro' }, el('button', { type: 'button', classe: 'btn', 'data-mantem-aviso': true, onclick: chamarLara }, 'Chamar Lara (Apoio)'))),
   );
   balao('ela', alvo ? ABERTURA : ABERTURA_GERAL);
+  ligarCampo('travei', campo);   // saiu sem enviar? o que ele falou volta ao campo
   casca.mostrar();
   setTimeout(() => campo.focus({ preventScroll: true }), 50);
 }
@@ -125,6 +127,7 @@ async function enviar() {
   const texto = campo.value.trim();
   if (!c || !texto || c.esperando) return;
   campo.value = '';
+  aoEnviar('travei');   // FR-016: o áudio do Fale só é apagado aqui
   tirarAcoes();
   balao('eu', texto);
   if (c.texto === null) c.texto = texto;
@@ -240,15 +243,9 @@ function chamarLara() {
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(textoLara())}`, '_blank', 'noopener');
 }
 
-// Fale: por enquanto, o ditado do navegador escreve no campo para Rafael conferir (o Fale completo chega no T025–T027)
-function falar(botao) {
-  const Reconhecer = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Reconhecer) { avisar('Este navegador não ouve. Escreva no campo.'); return; }
-  const r = new Reconhecer();
-  r.lang = 'pt-BR';
-  r.interimResults = true;
-  botao.lastChild.textContent = 'Ouvindo';
-  r.onresult = (e) => { $('travei-campo').value = [...e.results].map((x) => x[0].transcript).join(' '); };
-  r.onend = () => { botao.lastChild.textContent = 'Fale'; $('travei-campo')?.focus(); };
-  r.start();
+// Fale (fale.js): o Whisper no aparelho escreve no campo da conversa
+function faleDoTravei() {
+  const b = botaoFale('travei', () => $('travei-campo'));
+  b.classList.add('tv-fale');
+  return b;
 }

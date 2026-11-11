@@ -261,3 +261,12 @@ button.botao { width: 100%; }
 /* Configurações: os campos da Lara */
 .folha .campo { margin-top: 8px; }
 .folha .item .nome small { display: block; font-size: 16px; color: var(--suave); }
+
+/* A contagem da semana (T031; Rafael, 11/11/2026: no Início, acima do "Me ajude a destravar", sem a meta) */
+.contagem { display: block; width: 100%; margin: 24px 0 12px; padding: 16px 0 0; border: 0; border-top: 1px solid var(--borda); background: none;
+  color: var(--suave); font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.contagem-numero { margin: 8px 0 4px; font-size: 24px; font-weight: 700; }
+.contagem-valor { margin: 0; font-size: 18px; }
+.item .detalhe { display: block; font-size: 16px; color: var(--suave); }
+.noite-pergunta { margin: 8px 0 16px; font-size: 20px; font-weight: 700; line-height: 1.35; }
+.grade.noite .btn { justify-content: center; }

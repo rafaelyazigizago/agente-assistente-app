@@ -7,10 +7,13 @@ import { segundaDaSemana } from './calculos.js';
 import * as dados from './dados.js';
 import { estado, aoMudar, fixarSecoes, alternarFeita, anotar, mudar, moverPara } from './estado.js';
 import { $, el, svg, comIcone, avisar, ligarAviso, mostrarEstado } from './ui.js';
-import { diaLocal } from './data-local.js';
+import { diaLocal, diaAnterior } from './data-local.js';
 import { PARTES_DO_HOJE, parteDaHora, partesDoHoje, tarefaDeAgora, caixaNoHoje, mudancaNoHoje } from './hoje-dia.js';
-import { abrirTravei, ligarTela as ligarTelaTravei, aoAbrirOApp as aoAbrirOTravei } from './travei.js';
+import { abrirTravei, ligarTela as ligarTelaTravei, aoAbrirOApp as aoAbrirOTravei, TEXTO_LARA } from './travei.js';
 import * as tema from './tema.js';
+import { botaoFale, ligarCampo, aoEnviar, vaiEnviar, naoEnviou } from './fale.js';
+import { abrirODia, marcarOrganizado, guardaDoAparelho } from './inicio.js';
+import { semanaDe, contarSemana, perguntaDaNoite, respostaDaNoite, textoDaContagem } from './contagem.js';
 
 // ---------- As seções (as mesmas do protótipo) ----------
 // Assistente e Menu são fixos; Configurações fica sempre dentro do Menu. No MVP só o Hoje tem tela.
@@ -46,7 +49,7 @@ function ir(v, voltando = false) {
   atual = v;
   fecharFolha();
   document.querySelectorAll('.vista').forEach((x) => { const on = x.dataset.v === v; x.classList.toggle('on', on); x.hidden = !on; });
-  if (v === 'assistente') desenharInicio();
+  if (v === 'assistente') { desenharInicio(); if (estado.carregadoEm) carregarSemana(); }
   if (v === 'hoje' && estado.carregadoEm) desenharHoje();
   const r = vista(v).querySelector('.rolagem');
   if (r) r.scrollTop = 0;
@@ -79,28 +82,17 @@ function barra() {
   abas.hidden = !estado.usuario || SEM_BARRA.includes(atual);
 }
 
-// ---------- O ditado (Fale): o navegador escreve no campo para Rafael conferir ----------
-function ditar(botao, campo) {
-  const Reconhecer = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Reconhecer) { avisar('Este navegador não ouve. Escreva no campo.'); return; }
-  const r = new Reconhecer();
-  r.lang = 'pt-BR';
-  r.interimResults = true;
-  botao.lastChild.textContent = 'Ouvindo';
-  r.onresult = (e) => { campo.value = [...e.results].map((x) => x[0].transcript).join(' '); };
-  r.onend = () => { botao.lastChild.textContent = 'Fale'; campo.focus(); };
-  r.start();
-}
-const botaoFale = (campo) => comIcone('mic', el('button', { type: 'button', classe: 'fale', onclick: (e) => ditar(e.currentTarget, campo()) }, 'Fale'));
-
 // Cadastrar: sem data no texto, a tarefa é de hoje, na parte do dia de agora (Rafael, 11/11/2026: "A, parte de agora");
 // "ligar para o contador amanhã" vai para amanhã
-async function cadastrar(campo) {
+// tela: "hoje" ou "inicio" (o rascunho do Fale de cada campo; o Enviar apaga o áudio, FR-016)
+async function cadastrar(campo, tela) {
   const texto = campo.value.trim();
   if (!texto) return;
   const id = campo.id;
+  vaiEnviar(tela);   // o redesenho durante o anotar não traz o rascunho de volta (revisão T037, achado 1)
   const nova = await anotar(texto, false, interpretar(texto).dia ? {} : { dia: diaLocal(), parte_do_dia: parteDaHora() });
-  if (nova) { campo.value = ''; const atualCampo = $(id); if (atualCampo) atualCampo.value = ''; }   // a tela pode ter sido redesenhada
+  if (nova) { aoEnviar(tela); campo.value = ''; const atualCampo = $(id); if (atualCampo) atualCampo.value = ''; }   // a tela pode ter sido redesenhada
+  else naoEnviou(tela);
 }
 
 // ---------- Hoje: as contas ficam em hoje-dia.js ----------
@@ -136,8 +128,9 @@ function desenharHoje() {
   const feitas = todas.filter((t) => t.estado === 'feita').length;
   const campo = el('input', { id: 'texto-cadastrar', classe: 'campo', type: 'text', enterkeyhint: 'send', autocomplete: 'off', placeholder: 'ex.: ligar para o contador amanhã', 'aria-label': 'Cadastre uma nova tarefa para hoje', value: antes });
   campo.value = antes;
-  const form = el('form', { classe: 'linha', autocomplete: 'off', 'data-mantem-aviso': true, onsubmit: (e) => { e.preventDefault(); cadastrar(campo); } },
-    campo, el('button', { type: 'submit', classe: 'btn principal estreito' }, 'Enviar'), botaoFale(() => campo));
+  const form = el('form', { classe: 'linha', autocomplete: 'off', 'data-mantem-aviso': true, onsubmit: (e) => { e.preventDefault(); cadastrar(campo, 'hoje'); } },
+    campo, el('button', { type: 'submit', classe: 'btn principal estreito' }, 'Enviar'), botaoFale('hoje', () => $('texto-cadastrar')));
+  ligarCampo('hoje', campo);
   const zonas = PARTES_DO_HOJE.flatMap(([c, n]) => [el('h2', { classe: 'parte' }, n), el('div', { classe: 'zona', 'data-parte': c }, partes[c].map((t) => linhaDoHoje(t, agora)))]);
   tela.replaceChildren(el('div', { classe: 'rolagem' }, el('div', { classe: 'col sem-cabeca' },
     el('h1', { classe: 'titulo', id: 'titulo-hoje' }, 'Hoje'),
@@ -149,17 +142,11 @@ function desenharHoje() {
 // ---------- Início (Assistente): a primeira tela ----------
 // Destaque azul (Rafael, 10/11): antes das 9h, ou na 1ª abertura do dia ainda não organizado → "Quero organizar o meu dia";
 // depois → "Me ajude a destravar". "Dia organizado" = arrastou uma tarefa no Hoje. Para testar: ?hora=8 ou ?hora=15.
-const DIA_KEY = 'agente-inicio-dia';
-const lerDia = () => { try { const d = JSON.parse(localStorage.getItem(DIA_KEY)); if (d && d.dia === diaLocal()) return d; } catch { /* nada guardado */ } return { dia: diaLocal(), aberto: false, organizado: false }; };
-const gravarDia = (d) => { try { localStorage.setItem(DIA_KEY, JSON.stringify(d)); } catch { /* vale só agora */ } };
+// A regra fica em inicio.js (T029, testada em testes/inicio.test.mjs).
 let destaque = null;
 function calcularDestaque() {
   const qh = new URLSearchParams(location.search).get('hora');
-  const hora = qh !== null ? Number(qh) : Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
-  const d = lerDia();
-  destaque = (hora < 9 || (!d.aberto && !d.organizado)) ? 'organizar' : 'destravar';
-  d.aberto = true;
-  gravarDia(d);
+  destaque = abrirODia({ hora: qh !== null ? Number(qh) : undefined, guarda: guardaDoAparelho });
 }
 const horaAgora = () => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
 const primeiroNome = () => String(estado.usuario?.user_metadata?.full_name || estado.usuario?.user_metadata?.name || 'Rafael').split(' ')[0];
@@ -170,9 +157,9 @@ function desenharInicio() {
   const botao = (ic, texto, props) => comIcone(ic, el('button', { type: 'button', classe: 'botao', ...props }, texto));
   const campo = el('input', { id: 'texto-inicio', classe: 'campo', type: 'text', enterkeyhint: 'send', autocomplete: 'off', placeholder: 'Fale ou escreva a demanda', 'aria-label': 'Cadastre uma nova tarefa' });
   campo.value = antes;
-  campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); cadastrar(campo); } });
+  campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); cadastrar(campo, 'inicio'); } });
   const enviar = el('button', { type: 'button', classe: 'btn estreito envio', 'data-mantem-aviso': true, onclick: () => {
-    enviar.classList.add('tocado'); setTimeout(() => enviar.classList.remove('tocado'), 300); cadastrar(campo);
+    enviar.classList.add('tocado'); setTimeout(() => enviar.classList.remove('tocado'), 300); cadastrar(campo, 'inicio');
   } }, 'Enviar');
   const organizar = botao('hoje', 'Quero organizar o meu dia', { 'data-organizar': true, onclick: () => semTela('Organizar o meu dia', 'assistente') });
   const destravar = botao('seta', 'Me ajude a destravar', { 'data-travei-geral': true, onclick: () => abrirTravei(null) });
@@ -186,8 +173,10 @@ function desenharInicio() {
       organizar,
       agora ? botao('seta', `Quero continuar: ${agora.titulo}`, { 'data-continuar': true, onclick: () => abrirTarefa(agora.id) }) : null,
       botao('semana', 'Quero organizar a minha semana', { onclick: () => semTela('Semana', 'semana') }),
+      semana ? el('button', { type: 'button', classe: 'contagem', 'data-contagem': true, onclick: () => abrirFolha('semana') }, textoDaContagem(semana.total)) : null,
       destravar),
-    el('div', { classe: 'demanda' }, el('h2', {}, 'Cadastre uma nova tarefa'), el('div', { classe: 'linha' }, campo, enviar, botaoFale(() => campo)))));
+    el('div', { classe: 'demanda' }, el('h2', {}, 'Cadastre uma nova tarefa'), el('div', { classe: 'linha' }, campo, enviar, botaoFale('inicio', () => $('texto-inicio'))))));
+  ligarCampo('inicio', campo);
 }
 
 // ---------- A tarefa aberta ----------
@@ -252,7 +241,15 @@ const ajuda = (n, estilo) => el('p', { classe: 'ajuda', style: estilo }, n);
 const itemSemTela = (texto, info, titulo) => el('button', { type: 'button', classe: 'item', 'data-sem-tela': titulo || texto }, el('span', { classe: 'nome' }, texto), info ? el('span', { classe: 'info' }, info) : null);
 const chaveSemTela = (texto, on, titulo) => el('div', { classe: 'item' }, el('span', { classe: 'nome' }, texto), el('button', { type: 'button', classe: `chave${on ? ' on' : ''}`, 'data-sem-tela': titulo, 'aria-label': `${on ? 'Desligar' : 'Ligar'}: ${texto}` }));
 const iconeItem = (id) => el('span', { html: svg(id), style: 'display:contents' });
-const numeroLara = () => { try { return localStorage.getItem('agente-lara-whatsapp') || ''; } catch { return ''; } };
+const lerAparelho = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const numeroLara = () => lerAparelho('agente-lara-whatsapp') || '';
+// "IA ligada" (T033; FR-018): só no aparelho, padrão ligada. Desligada, o Travei usa só a Base (travei.js lê a mesma chave).
+// Rafael, 11/11/2026: a chave fica logo abaixo de "A IA do assistente".
+const iaLigada = () => lerAparelho('agente-ia-ligada') !== '0';
+function trocarIa() {
+  try { if (iaLigada()) localStorage.setItem('agente-ia-ligada', '0'); else localStorage.removeItem('agente-ia-ligada'); } catch { /* vale só agora */ }
+  desenharFolha();
+}
 const acao = (texto, info, props) => el('button', { type: 'button', classe: 'item', ...props }, el('span', { classe: 'nome' }, texto, info ? [el('br'), el('span', { classe: 'info' }, info)] : null));
 
 function desenharFolha() {
@@ -271,6 +268,8 @@ function desenharFolha() {
       itemSemTela('Como você quer chamar o seu assistente?', 'Assistente ›', 'O seu assistente'),
       itemSemTela('Como o assistente fala com você', 'Gentil ›', 'O seu assistente'),
       itemSemTela('A IA do assistente', 'Groq · chave no cofre', 'A IA do assistente'),
+      el('div', { classe: 'item' }, el('span', { classe: 'nome' }, 'IA ligada', el('span', { classe: 'detalhe' }, 'Desligada, o Travei usa só os passos da Base.')),
+        el('button', { type: 'button', classe: `chave${iaLigada() ? ' on' : ''}`, 'data-ia-ligada': true, 'aria-label': `${iaLigada() ? 'Desligar' : 'Ligar'} a IA`, onclick: trocarIa })),
       itemSemTela('Meu agente', 'Teseu', 'Meu agente'),
       secao('O que o assistente aprendeu'),
       chaveSemTela('Quando você marca "Cansaço" depois das 15h, sugerir Pausa primeiro.', true, 'O que o assistente aprendeu'),
@@ -298,10 +297,18 @@ function desenharFolha() {
     f.setAttribute('aria-label', 'Apoio');
     const campo = el('input', { id: 'lara-whatsapp', classe: 'campo', type: 'tel', inputmode: 'tel', autocomplete: 'off', placeholder: 'WhatsApp da Lara, com DDD', 'aria-label': 'WhatsApp da Lara, com DDD' });
     campo.value = numeroLara();
+    // O texto base da mensagem (FR-011): só no aparelho; vazio volta ao padrão
+    const texto = el('textarea', { id: 'lara-texto', classe: 'campo', rows: 3, 'aria-label': 'Mensagem para a Lara' });
+    texto.value = lerAparelho('agente-lara-texto') || TEXTO_LARA;
     conteudo = [...topo('Apoio', 'configuracoes'), ajuda('Quem você chama quando trava: Lara Yazigi · WhatsApp'), campo,
+      secao('Mensagem para a Lara'), texto,
       el('div', { classe: 'mt-p' }, el('button', { type: 'button', classe: 'btn principal', onclick: () => {
         const n = campo.value.replace(/\D/g, '');
-        try { if (n) localStorage.setItem('agente-lara-whatsapp', n); else localStorage.removeItem('agente-lara-whatsapp'); } catch { /* vale só agora */ }
+        const m = texto.value.trim();
+        try {
+          if (n) localStorage.setItem('agente-lara-whatsapp', n); else localStorage.removeItem('agente-lara-whatsapp');
+          if (m && m !== TEXTO_LARA) localStorage.setItem('agente-lara-texto', m); else localStorage.removeItem('agente-lara-texto');
+        } catch { /* vale só agora */ }
         vistaFolha = 'configuracoes'; desenharFolha();
       } }, 'Salvar'))];
   } else if (v === 'jeito') {
@@ -336,6 +343,25 @@ function desenharFolha() {
       acao(t?.prioridade_semana ? 'Tirar a estrela' : 'Pôr estrela', null, { 'data-estrela': true }),
       acao('Projeto ligado', null, { 'data-sem-tela': 'Projeto ligado' }),
       acao('Reabrir · Arquivar', null, { 'data-arquivar': true })];
+  } else if (v === 'semana') {
+    const s = semana, quando = { aceitou: 'aceitou o passo', outro: 'pediu outro passo', sem_resposta: 'sem resposta', pendente: 'em andamento' };
+    f.setAttribute('aria-label', 'Esta semana');
+    conteudo = [...topo('Esta semana'),
+      s ? [el('p', { classe: 'contagem-numero' }, textoDaContagem(s.total)),
+        s.passos ? [secao('Passos aceitos'), el('p', { classe: 'contagem-valor' }, `${s.aceitas} de ${s.passos}`)] : null,
+        s.detalhe.length || s.semTravei ? secao('Cada travada') : null,
+        s.detalhe.map((d) => el('div', { classe: 'item' }, el('span', { classe: 'nome' }, `${diaPorExtenso(d.dia)} · ${d.tarefa}`,
+          el('span', { classe: 'detalhe' }, [d.texto ? `"${d.texto}"` : null, quando[d.resultado] || d.resultado].filter(Boolean).join(' · '))))),
+        s.semTravei ? el('div', { classe: 'item' }, el('span', { classe: 'nome' }, 'Sem abrir o Travei',
+          el('span', { classe: 'detalhe' }, `${s.semTravei} ${s.semTravei === 1 ? 'vez' : 'vezes'}, pela pergunta da noite`))) : null] : null];
+  } else if (v === 'noite') {
+    const hoje = diaLocal(), quando = noite === hoje ? 'Hoje' : noite === diaAnterior(hoje) ? 'Ontem' : `${/^(sábado|domingo)/.test(diaPorExtenso(noite)) ? 'No' : 'Na'} ${diaPorExtenso(noite)},`;
+    f.setAttribute('aria-label', 'Pergunta da noite');
+    conteudo = [...topo('Pergunta da noite'),
+      el('p', { classe: 'noite-pergunta' }, `${quando} você travou ou desviou sem abrir o Travei? Quantas vezes?`),
+      el('div', { classe: 'grade noite' }, [['Nenhuma', 0], ['1', 1], ['2', 2], ['3', 3], ['4 ou mais', 4]].map(([n, k]) =>
+        el('button', { type: 'button', classe: 'btn', 'data-noite': k }, n))),
+      el('div', { classe: 'mt-p' }, el('button', { type: 'button', classe: 'btn', 'data-noite': 'pular' }, 'Pular'))];
   } else if (v === 'parte') {
     const t = tarefa(tarefaMais), agora = t && caixaNoHoje(t, opcoesDoHoje());
     f.setAttribute('aria-label', 'Mudar a parte do dia');
@@ -343,7 +369,7 @@ function desenharFolha() {
       PARTES_DO_HOJE.map(([id, n]) => el('button', { type: 'button', classe: 'item', 'data-parte-ir': id }, el('span', { classe: 'nome' }, n), id === agora ? el('span', { classe: 'info' }, 'agora') : null))];
   }
   f.dataset.folhaVista = v;
-  f.replaceChildren(...conteudo.flat().filter(Boolean));
+  f.replaceChildren(...conteudo.flat(Infinity).filter(Boolean));
 }
 function abrirFolha(v, id = null) {
   vistaFolha = v;
@@ -360,7 +386,7 @@ function fecharFolha() {
 
 // Dia organizado: arrastou ou mudou a parte (grava dias.organizado; antes do Run da 0008 o erro fica só no console)
 function diaOrganizado() {
-  const d = lerDia(); d.organizado = true; gravarDia(d);
+  marcarOrganizado({ guarda: guardaDoAparelho });
   dados.marcarDiaOrganizado(diaLocal()).catch((erro) => console.warn('dia organizado não gravou', erro));
 }
 function mudarParte(t, c) {
@@ -456,7 +482,8 @@ function ligarToques() {
     if (t && alvo.closest('.mais')) { abrirFolha('mais', t.id); return; }
     if (t && t.estado !== 'feita') { estado.agoraId = t.id; desenharTudo(); return; }
     // folha
-    if (alvo.closest('.fechar') || alvo.id === 'veu') { fecharFolha(); return; }
+    const rn = alvo.closest('[data-noite]'); if (rn) { responderNoite(rn.dataset.noite === 'pular' ? null : Number(rn.dataset.noite)); return; }
+    if (alvo.closest('.fechar') || alvo.id === 'veu') { if (vistaFolha === 'noite') noite = null; fecharFolha(); return; }
     const tm = tarefa(tarefaMais);
     if (alvo.closest('[data-abrir-tarefa]') && tm) { fecharFolha(); abrirTarefa(tm.id); return; }
     if (alvo.closest('[data-travei]') && tm) { fecharFolha(); abrirTravei({ id: tm.id, titulo: tm.titulo }); return; }
@@ -497,6 +524,7 @@ function desenharTudo() {
   if (vistaFolha === 'mais' || vistaFolha === 'parte') desenharFolha();
 }
 aoMudar(desenharTudo);
+aoMudar(guardarCopia);   // a cópia do aparelho acompanha cada mudança
 
 // ---------- Carregando, sem banco, erro ao abrir (na vista do Hoje, com as peças do protótipo) ----------
 const TEMPO_MAXIMO_MS = window.__ASSISTENTE_TEMPO_MAXIMO_MS ?? window.__CENTELHA_TEMPO_MAXIMO_MS ?? 10000;
@@ -546,20 +574,82 @@ async function pedirLogin() {
     $('erro-entrar').hidden = false;
   }
 }
+// ---------- A contagem da semana e a pergunta da noite (T031, contagem.js; spec US4) ----------
+// Rafael, 11/11/2026: no Início, acima do "Me ajude a destravar": "3 tarefas travadas esta semana.", sem a meta.
+// Antes do Run da 0008 (sem `dias` e sem as colunas novas de `travadas`) a linha não aparece e o erro fica só no console.
+let semana = null, noite = null;   // noite: o dia "AAAA-MM-DD" sobre o qual a pergunta está aberta
+async function carregarSemana({ perguntar = false } = {}) {
+  const agora = new Date(), hoje = diaLocal(agora), { inicio } = semanaDe(hoje);
+  try {
+    if (perguntar) await dados.abrirDia(hoje);
+    // dias: desde 7 antes da segunda (a pergunta pode ser sobre o último dia aberto); travadas: desde a véspera da segunda (o fuso)
+    const [travadas, dias] = await Promise.all([dados.travadasDesde(`${diaAnterior(inicio)}T00:00:00Z`), dados.diasDesde(semanaDe(diaAnterior(inicio)).inicio)]);
+    semana = contarSemana({ agora, travadas, dias, nomeDaTarefa: (id) => tarefa(id)?.titulo ?? null });
+    if (atual === 'assistente' && !vistaFolha) desenharInicio();
+    if (vistaFolha === 'semana') desenharFolha();
+    const dia = perguntar ? perguntaDaNoite({ agora, dias }) : null;
+    if (dia && !vistaFolha) {
+      noite = dia;
+      abrirFolha('noite');
+      await dados.mudarDia(dia, { pergunta_feita_em: agora.toISOString() });   // mostrada = não volta, mesmo se pular
+    }
+  } catch (erro) { console.warn('a contagem da semana não carregou', erro); }
+}
+async function responderNoite(vezes) {
+  const dia = noite;
+  noite = null;
+  fecharFolha();
+  if (!dia || vezes === null) return;
+  try { await dados.mudarDia(dia, respostaDaNoite({ vezes })); await carregarSemana(); }
+  catch (erro) { console.error(erro); avisar('Não salvou: sem internet ou o servidor não respondeu.'); }
+}
+
+// ---------- Sem internet (T035; FR-022): a cópia da última vez fica no aparelho, e o app abre com ela ----------
+// Guarda o espaço, as tarefas e os passos de quem entrou. Sem rede, o Hoje aparece com ela e o Travei dá o passo da Base;
+// o que não grava avisa, como já avisava. Quando a rede volta, o app recarrega do banco.
+const COPIA = 'agente-copia';
+function guardarCopia() {
+  if (!estado.usuario || !estado.carregadoEm || estado.semRede) return;
+  try { localStorage.setItem(COPIA, JSON.stringify({ usuario: estado.usuario.id, espacoId: estado.espacoId, tarefas: estado.tarefas, passos: [...estado.passos] })); }
+  catch { /* sem espaço: fica a anterior */ }
+}
+// Só falta de rede (aparelho sem rede, tempo esgotado ou o pedido nem saiu); outro erro mostra a tela de sempre (revisão T037, achado 5)
+const ehFaltaDeRede = (erro) => !navigator.onLine || !!erro?.tempo || /failed to fetch|network|load failed/i.test(String(erro?.message ?? erro));
+function usarCopia(usuario, erro) {
+  if (!ehFaltaDeRede(erro)) return false;
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem(COPIA)); } catch { /* estragada */ }
+  if (!c || c.usuario !== usuario.id || !Array.isArray(c.tarefas)) return false;
+  estado.espacoId = c.espacoId;
+  estado.tarefas = c.tarefas;
+  estado.passos = new Map(Array.isArray(c.passos) ? c.passos : []);
+  estado.semRede = true;
+  fixarSecoes();
+  estado.carregadoEm = Date.now();
+  mostrarEstado('Sem internet', true);
+  // a rede voltou: traz do banco sem recarregar a página (a conversa do Travei e o texto pela metade ficam; revisão T037, achado 4)
+  const tentar = async () => { if (estado.semRede && await carregar()) { desenharTudo(); carregarSemana(); } };
+  addEventListener('online', tentar, { once: true });
+  // com o aparelho online (o banco só demorou), o evento "online" não vem: tenta de novo em 20 s (converge do T037)
+  if (navigator.onLine) setTimeout(tentar, 20000);
+  return true;
+}
+
 async function entrar(usuario) {
   estado.usuario = usuario;
   mostrarEstado('Carregando…');
   if (!estado.carregadoEm) mostrarCarregando();
   try {
     [estado.espacoId] = await comTempo(Promise.all([dados.espacoPessoal(usuario.id), dados.conferir0007()]));
-  } catch (erro) { console.error(erro); mostrarSemBanco(); return; }
-  if (!(await carregar())) return;
+  } catch (erro) { console.error(erro); if (!usarCopia(usuario, erro)) { mostrarSemBanco(); return; } }
+  if (!estado.semRede && !(await carregar())) return;
   calcularDestaque();
   desenharTudo();
   pilha = [];
   ir('assistente', true);
   document.body.dataset.pronto = '1';
   aoAbrirOTravei();
+  carregarSemana({ perguntar: true });
 }
 // Abertas + feitas desde segunda (o Hoje mostra as feitas de hoje, riscadas)
 async function carregar() {
@@ -568,13 +658,15 @@ async function carregar() {
     [estado.tarefas, estado.passos] = await comTempo(Promise.all([dados.carregarTarefas(estado.espacoId, desde), dados.contarPassos()]));
   } catch (erro) {
     console.error(erro);
-    if (!estado.carregadoEm) { mostrarSemBanco(); return false; }
+    if (!estado.carregadoEm) { if (usarCopia(estado.usuario, erro)) return true; mostrarSemBanco(); return false; }
     mostrarEstado('Não carregou', true);
     avisar('Não deu para trazer as tarefas. Recarregue a página.');
     return false;
   }
   fixarSecoes();
   estado.carregadoEm = Date.now();
+  estado.semRede = false;
+  guardarCopia();
   mostrarEstado('Salvo');
   return true;
 }
@@ -599,6 +691,11 @@ function ligar() {
     navigator.serviceWorker?.getRegistration().then((r) => r?.update()).catch(() => {});
     if (!estado.espacoId || vistaFolha || atual === 'travei') return;
     if (Date.now() - estado.carregadoEm > RECARREGAR_DEPOIS_MS || hojeISO() !== estado.hoje) carregar().then((ok) => ok && desenharTudo());
+    // Voltou do segundo plano (o normal no celular): o destaque do Início, a abertura do dia e a pergunta da noite
+    // valem também aqui, e não só quando o app abre do zero (revisão T037, achado 6; FR-001, FR-020)
+    calcularDestaque();
+    if (atual === 'assistente') desenharInicio();
+    carregarSemana({ perguntar: true });
   });
   // Para os testes e as fotos (testes/app-falso.html): ir a uma tela, abrir a folha ou a tarefa
   window.__assistente = { ir: (v) => (COM_TELA.has(v) || vista(v) ? ir(v) : irSecao(v)), abrirFolha, abrirTarefa };

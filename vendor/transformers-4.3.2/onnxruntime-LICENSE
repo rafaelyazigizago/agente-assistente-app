@@ -1,0 +1,2 @@
+onnxruntime-web 1.31.0-dev.20260914-8d85527a0 (Microsoft), licença MIT: https://github.com/microsoft/onnxruntime/blob/main/LICENSE
+Arquivos: ort-wasm-simd-threaded.asyncify.mjs e .wasm, tirados do pacote do npm sem mudança.

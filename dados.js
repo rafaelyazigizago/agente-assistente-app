@@ -64,7 +64,27 @@ export async function marcarDiaOrganizado(data) {
   const ja = exigir(await banco.from('dias').select('id,organizado').eq('data', data).maybeSingle());
   if (ja?.organizado) return;
   if (ja) { mudouUma(await banco.from('dias').update({ organizado: true }).eq('id', ja.id).select('id')); return; }
-  exigir(await banco.from('dias').insert({ data, organizado: true }).select('id'));
+  const r = await banco.from('dias').insert({ data, organizado: true }).select('id');
+  if (r.error?.code === '23505') { mudouUma(await banco.from('dias').update({ organizado: true }).eq('data', data).select('id')); return; }   // a abertura criou o dia ao mesmo tempo
+  exigir(r);
+}
+
+// A contagem da semana (T031, contagem.js). 1ª abertura do dia: uma linha em `dias` (o banco põe o dono e o aberto_em).
+export async function abrirDia(data) {
+  const ja = exigir(await banco.from('dias').select('id').eq('data', data).maybeSingle());
+  if (ja) return;
+  const r = await banco.from('dias').insert({ data }).select('id');
+  if (r.error?.code !== '23505') exigir(r);   // 23505: outro pedido criou o dia ao mesmo tempo (revisão T037, achado 8)
+}
+export async function diasDesde(data) {
+  return exigir(await banco.from('dias').select('data,sem_travei,pergunta_feita_em').gte('data', data)) ?? [];
+}
+export async function travadasDesde(instanteISO) {
+  return exigir(await banco.from('travadas').select('id,conversa_id,criado_em,tarefa_id,texto,passo,resultado').gte('criado_em', instanteISO)) ?? [];
+}
+// A pergunta da noite: pergunta_feita_em ao mostrar; sem_travei ao responder
+export async function mudarDia(data, patch) {
+  mudouUma(await banco.from('dias').update(patch).eq('data', data).select('id'));
 }
 
 export async function criarTarefa(dados) {
