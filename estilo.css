@@ -230,10 +230,10 @@ button.item { width: 100%; background: none; border-left: 0; border-right: 0; bo
 
 /* ===== tablet e computador (era .tela.tablet no protótipo): a partir de 768 px ===== */
 @media (min-width: 768px) {
-  /* Rafael, 11/11/2026: "A · Coluna no meio": no computador, uma coluna de 640 px no centro, sem aumentar a letra */
-  .col, .conteudo { max-width: 640px; }
-  .emergencia .dentro, .tv-rodape .dentro { max-width: 592px; }
-  .folha { max-width: 640px; margin: 0 auto; }
+  /* Rafael, 11/11/2026: "A · Coluna no meio", depois "proponho o dobro da largura atual": coluna de 1280 px no centro, sem aumentar a letra */
+  .col, .conteudo { max-width: 1280px; }
+  .emergencia .dentro, .tv-rodape .dentro { max-width: 1232px; }
+  .folha { max-width: 1280px; margin: 0 auto; }
   .grade { grid-template-columns: repeat(4, minmax(0, 1fr)); }}
 
 /* ===== peças do app que o protótipo não desenha, com as mesmas regras (16 px no mínimo, liso, uma cor de ação) ===== */
