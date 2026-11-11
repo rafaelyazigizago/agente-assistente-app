@@ -165,7 +165,8 @@ function desenharInicio() {
   const destravar = botao('seta', 'Me ajude a destravar', { 'data-travei-geral': true, onclick: () => abrirTravei(null) });
   organizar.classList.toggle('principal', destaque === 'organizar');
   destravar.classList.toggle('principal', destaque === 'destravar');
-  tela.replaceChildren(el('div', { classe: 'conteudo' },
+  // dentro da rolagem: em tela baixa (computador, celular deitado) o Início rola até o "Cadastre" (Rafael, 11/11/2026)
+  tela.replaceChildren(el('div', { classe: 'rolagem' }, el('div', { classe: 'conteudo' },
     el('div', { classe: 'data' }, `${dataDeHoje()} · ${horaAgora()}`),
     el('div', { classe: 'saudacao' }, el('h1', {}, `Olá, ${primeiroNome()}.`), el('p', {}, 'Tudo bem contigo?')),
     el('div', { classe: 'escolhas' },
@@ -175,7 +176,7 @@ function desenharInicio() {
       botao('semana', 'Quero organizar a minha semana', { onclick: () => semTela('Semana', 'semana') }),
       semana ? el('button', { type: 'button', classe: 'contagem', 'data-contagem': true, onclick: () => abrirFolha('semana') }, textoDaContagem(semana.total)) : null,
       destravar),
-    el('div', { classe: 'demanda' }, el('h2', {}, 'Cadastre uma nova tarefa'), el('div', { classe: 'linha' }, campo, enviar, botaoFale('inicio', () => $('texto-inicio'))))));
+    el('div', { classe: 'demanda' }, el('h2', {}, 'Cadastre uma nova tarefa'), el('div', { classe: 'linha' }, campo, enviar, botaoFale('inicio', () => $('texto-inicio')))))));
   ligarCampo('inicio', campo);
 }
 
