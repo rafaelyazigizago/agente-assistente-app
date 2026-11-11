@@ -6,7 +6,10 @@
 // O áudio nunca sai daqui: só o modelo é baixado; nada é enviado.
 import { pipeline, env } from './vendor/transformers-4.3.2/transformers.min.js';
 
-const MODELO = 'onnx-community/whisper-small';
+// Rafael, 11/11/2026: no computador o small "ficou muito bom e foi bem rápido"; no celular ficou "Analisando" por muito tempo.
+// Então: celular (Android, iPhone, iPad) usa o base, menor e mais rápido; computador continua com o small.
+const CELULAR = /Android|iPhone|iPad|Mobile/i.test(self.navigator?.userAgent ?? '');
+const MODELO = CELULAR ? 'onnx-community/whisper-base' : 'onnx-community/whisper-small';
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 env.backends.onnx.wasm.wasmPaths = new URL('./vendor/transformers-4.3.2/', import.meta.url).href;   // o ONNX vem do app, não da internet
