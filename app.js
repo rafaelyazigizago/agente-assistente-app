@@ -129,7 +129,7 @@ function desenharHoje() {
   const campo = el('input', { id: 'texto-cadastrar', classe: 'campo', type: 'text', enterkeyhint: 'send', autocomplete: 'off', placeholder: 'ex.: ligar para o contador amanhã', 'aria-label': 'Cadastre uma nova tarefa para hoje', value: antes });
   campo.value = antes;
   const form = el('form', { classe: 'linha', autocomplete: 'off', 'data-mantem-aviso': true, onsubmit: (e) => { e.preventDefault(); cadastrar(campo, 'hoje'); } },
-    campo, el('button', { type: 'submit', classe: 'btn principal estreito' }, 'Enviar'), botaoFale('hoje', () => $('texto-cadastrar')));
+    campo, comIcone('enviar', el('button', { type: 'submit', classe: 'btn principal estreito so-icone-celular', 'aria-label': 'Enviar' }, el('span', {}, 'Enviar'))), botaoFale('hoje', () => $('texto-cadastrar')));
   ligarCampo('hoje', campo);
   const zonas = PARTES_DO_HOJE.flatMap(([c, n]) => [el('h2', { classe: 'parte' }, n), el('div', { classe: 'zona', 'data-parte': c }, partes[c].map((t) => linhaDoHoje(t, agora)))]);
   tela.replaceChildren(el('div', { classe: 'rolagem' }, el('div', { classe: 'col sem-cabeca' },
@@ -160,7 +160,8 @@ function desenharInicio() {
   campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); cadastrar(campo, 'inicio'); } });
   const enviar = el('button', { type: 'button', classe: 'btn estreito envio', 'data-mantem-aviso': true, onclick: () => {
     enviar.classList.add('tocado'); setTimeout(() => enviar.classList.remove('tocado'), 300); cadastrar(campo, 'inicio');
-  } }, 'Enviar');
+  } }, el('span', {}, 'Enviar'));
+  comIcone('enviar', enviar); enviar.classList.add('so-icone-celular'); enviar.setAttribute('aria-label', 'Enviar');
   const organizar = botao('hoje', 'Quero organizar o meu dia', { 'data-organizar': true, onclick: () => semTela('Organizar o meu dia', 'assistente') });
   const destravar = botao('seta', 'Me ajude a destravar', { 'data-travei-geral': true, onclick: () => abrirTravei(null) });
   organizar.classList.toggle('principal', destaque === 'organizar');

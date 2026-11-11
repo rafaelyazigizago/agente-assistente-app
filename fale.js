@@ -123,7 +123,8 @@ const TEXTO = { parado: 'Fale', ouvindo: 'Enviar gravação', escrevendo: 'Anali
 
 // tela: "hoje" ou "travei" · campo(): o campo onde o texto entra
 export function botaoFale(tela, campo) {
-  const pintar = (b, f) => { b.lastChild.textContent = TEXTO[f]; b.setAttribute('aria-pressed', f === 'ouvindo'); };
+  // data-fase: no celular, parado, o botão mostra só o microfone (Rafael, 11/11/2026: "B · Botões só com ícone")
+  const pintar = (b, f) => { b.lastChild.textContent = TEXTO[f]; b.setAttribute('aria-pressed', f === 'ouvindo'); b.dataset.fase = f; if (f === 'parado') b.setAttribute('aria-label', 'Fale'); else b.removeAttribute('aria-label'); };
   const mostrar = (f) => { fases.set(tela, f); document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => pintar(b, f)); pintar(botao, f); };
   const botao = comIcone('mic', el('button', { type: 'button', classe: 'fale', 'data-fale': tela, 'data-mantem-aviso': true, onclick: async () => {
     const fase = fases.get(tela) ?? 'parado';
@@ -133,7 +134,7 @@ export function botaoFale(tela, campo) {
       return;
     }
     mostrar('escrevendo');
-    aoBaixar = (pronto) => { document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => { b.lastChild.textContent = pronto >= 100 ? TEXTO.escrevendo : `Baixando ${pronto ?? 0}%`; }); };
+    aoBaixar = (pronto) => { document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => { b.lastChild.textContent = pronto >= 100 ? TEXTO.escrevendo : `Baixando ${pronto ?? 0}%`; b.dataset.fase = 'escrevendo'; }); };
     try {
       const texto = await fale().parar(tela);
       const c = campo();
@@ -141,7 +142,7 @@ export function botaoFale(tela, campo) {
     } catch {
       avisar('Não consegui escrever o que você falou. O áudio ficou guardado; escreva no campo.');
     } finally { mostrar('parado'); }
-  } }, TEXTO.parado));
+  } }, el('span', {}, TEXTO.parado)));
   pintar(botao, fases.get(tela) ?? 'parado');
   return botao;
 }

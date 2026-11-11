@@ -94,7 +94,7 @@ export function abrirTravei(alvo = null) {
     passos: [], tecnicas: [], linha: null, linhaEhPergunta: false, resultado: null, crise: false };
   const campo = el('input', { id: 'travei-campo', classe: 'campo tv-campo', type: 'text', autocomplete: 'off', enterkeyhint: 'send', placeholder: 'Escreva do seu jeito, até “não sei dizer”', 'aria-label': 'O que está acontecendo' });
   campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); enviar(); } });
-  const envio = el('button', { type: 'button', classe: 'btn principal estreito tv-enviar', onclick: () => enviar() }, 'Enviar');
+  const envio = comIcone('enviar', el('button', { type: 'button', classe: 'btn principal estreito tv-enviar so-icone-celular', 'aria-label': 'Enviar', onclick: () => enviar() }, el('span', {}, 'Enviar')));
   tela().replaceChildren(
     el('div', { classe: 'rolagem tv-rolagem' }, el('div', { classe: 'col' },
       el('div', { classe: 'cabeca' }, el('button', { type: 'button', classe: 'voltar', onclick: () => sair() }, '‹ Voltar')),
