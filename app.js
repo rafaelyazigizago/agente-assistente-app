@@ -167,7 +167,8 @@ function desenharInicio() {
   destravar.classList.toggle('principal', destaque === 'destravar');
   // dentro da rolagem: em tela baixa (computador, celular deitado) o Início rola até o "Cadastre" (Rafael, 11/11/2026)
   tela.replaceChildren(el('div', { classe: 'rolagem' }, el('div', { classe: 'conteudo' },
-    el('div', { classe: 'data' }, `${dataDeHoje()} · ${horaAgora()}`),
+    // Rafael, 11/11/2026: "B · Ao lado da data, no topo": a versão no ar sempre à vista
+    el('div', { classe: 'data' }, `${dataDeHoje()} · ${horaAgora()} · v${self.VERSAO_APP || 'dev'}`),
     el('div', { classe: 'saudacao' }, el('h1', {}, `Olá, ${primeiroNome()}.`), el('p', {}, 'Tudo bem contigo?')),
     el('div', { classe: 'escolhas' },
       el('p', { classe: 'rotulo' }, 'O que você deseja fazer?'),
