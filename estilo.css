@@ -52,9 +52,14 @@ input.campo, textarea.campo { color: var(--texto); width: 100%; }
 .linha > div.campo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 54px; }
 input.campo::placeholder, textarea.campo::placeholder { color: var(--suave); }
 textarea.campo { min-height: 88px; padding: 12px 16px; resize: none; display: block; }
-.fale { width: 72px; min-height: 56px; border-radius: 12px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto);
+.fale { min-width: 72px; padding: 0 12px; white-space: nowrap; min-height: 56px; border-radius: 12px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 700 16px "Atkinson Hyperlegible", sans-serif; cursor: pointer; flex: none; }
 .fale svg { width: 20px; height: 20px; }
+/* gravando: a bolinha vermelha piscando no lugar do microfone (Rafael, 11/11/2026) */
+.fale[aria-pressed="true"] svg { display: none; }
+.fale[aria-pressed="true"]::before { content: ''; width: 12px; height: 12px; margin: 4px 0; border-radius: 50%; background: #D93025; animation: gravando 1s ease-in-out infinite; }
+@keyframes gravando { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .fale[aria-pressed="true"]::before { animation: none; } }
 
 /* ===== as outras telas, com as mesmas peças ===== */
 /* Rafael (07/11): o botão do topo (Buscar, Privada) precisa de respiro; o topo desce de 8 para 24 px, igual à margem do lado */

@@ -117,8 +117,9 @@ const fases = new Map();
 // Telas com Enviar em andamento: o rascunho não volta ao campo, nem num redesenho (revisão T037, achado 1)
 const enviando = new Set();
 
-// Os textos do botão enquanto trabalha. "Ouvindo" é o do protótipo; "Escrevendo" é provisório (pergunta a Rafael).
-const TEXTO = { parado: 'Fale', ouvindo: 'Ouvindo', escrevendo: 'Escrevendo' };
+// Os textos do botão. Rafael, 11/11/2026: "A · Diz o próximo toque": gravando, o botão diz "Enviar gravação" (com a bolinha
+// vermelha piscando); depois, "Analisando"; na 1ª vez, enquanto o Whisper baixa, "Baixando N%".
+const TEXTO = { parado: 'Fale', ouvindo: 'Enviar gravação', escrevendo: 'Analisando' };
 
 // tela: "hoje" ou "travei" · campo(): o campo onde o texto entra
 export function botaoFale(tela, campo) {
@@ -132,7 +133,7 @@ export function botaoFale(tela, campo) {
       return;
     }
     mostrar('escrevendo');
-    aoBaixar = () => { document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => { b.lastChild.textContent = TEXTO.escrevendo; }); };
+    aoBaixar = (pronto) => { document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => { b.lastChild.textContent = pronto >= 100 ? TEXTO.escrevendo : `Baixando ${pronto ?? 0}%`; }); };
     try {
       const texto = await fale().parar(tela);
       const c = campo();
