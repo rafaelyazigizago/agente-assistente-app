@@ -4,19 +4,22 @@ import { hojeISO, deISO } from './datas.js';
 import { segundaDaSemana } from './calculos.js';
 import * as dados from './dados.js';
 import { estado, aoMudar, fixarSecoes, falha } from './estado.js';
-import { desenharHoje, desenharSemana, aoAbrirTarefa, aoTrocarCalendario, aoAbrirSemDia } from './telas.js';
+import { desenharHojeMvp } from './hoje.js';
+import { desenharHoje, desenharSemana, aoAbrirTarefa, aoTrocarCalendario, aoAbrirTodasCom } from './telas.js';
 import { abrirTarefa, fecharTarefa, atualizarTarefa, aoVoltar, textoParaOuvir, fecharMomento, momentoAberto, tarefaAberta, redesenharTarefa } from './tela-tarefa.js';
 import { desenharDiario, salvarAgora, esquecerDiario, pararDeOuvir } from './tela-diario.js';
 import { desenharGrupos, aoAbrirLista } from './tela-grupos.js';
-import { abrirLista as prepararLista, desenharLista, tituloDaLista, filtrarSemDia } from './tela-lista.js';
+import { abrirLista as prepararLista, desenharLista, tituloDaLista, filtrarTodas } from './tela-lista.js';
 import { desenharMenu, ligarMenu } from './menu.js';
 import { aoAbrirTarefaPelasAcoes, abrirMover, alternarEstrela, limparSelecao, selecao } from './acoes.js';
 import { alternarFeita, moverPara } from './estado.js';
 import * as preferencias from './preferencias.js';
 import { ligarPet, mostrarPet, abrirConversa } from './pet.js';
 import { chamaAberta, retomarChama, fecharCartaoChama } from './chama.js';
-import { desenharFuncoes, aoMudarFuncoes } from './funcoes.js';
+import { desenharFuncoes, aoMudarFuncoes, trocarModoMvp } from './funcoes.js';
+import { modoMvpLigado, telaNoModo, abasNoModo } from './modo-mvp.js';
 import { $, el, mostrarEstado, avisar, fecharAviso, ligarAviso, abrirFolha, fecharFolha, folhaAtual, ouvir, reiniciar, movimento } from './ui.js';
+import { aoAbrirOApp as aoAbrirOTravei } from './travei.js';
 
 // O mapa (lote 42, 28/10): o mesmo no celular e no notebook. Hoje · Listas · Calendário · Diário. A Caixa de entrada saiu
 // (Rafael: "eu não vejo a necessidade de Caixa de Entrada se já temos Hoje, Semana, Todas, Prioridades"): o que não tem dia
@@ -36,7 +39,7 @@ function desenharAtual(entrando = false) {
   desenharMenu();
   if (estado.painel) atualizarTarefa();
   if (estado.aba === 'tarefa') { atualizarTarefa(); return; }
-  if (estado.aba === 'hoje') desenharHoje();
+  if (estado.aba === 'hoje') (modoMvpLigado() ? desenharHojeMvp : desenharHoje)();
   else if (estado.aba === 'lista') desenharLista();
   else if (estado.aba === 'semana') desenharSemana(entrando);
   else if (estado.aba === 'grupos') desenharGrupos();
@@ -45,9 +48,20 @@ function desenharAtual(entrando = false) {
 }
 aoMudar(() => desenharAtual(false));
 // Uma função ligada ou desligada em "Do seu jeito" aparece ou some na hora, em todas as telas
-aoMudarFuncoes(() => { desenharAtual(false); redesenharTarefa(); });
+aoMudarFuncoes(() => { aplicarModoMvp(); desenharAtual(false); redesenharTarefa(); });
+
+// Modo MVP (T009; Rafael: "A, nasce ligado"): só Início, Hoje e Travei. As abas de fora e o pet somem; pedir uma tela de fora
+// leva ao Hoje. Desligar em "Do seu jeito" traz tudo de volta. Nada se apaga.
+function aplicarModoMvp() {
+  const mvp = modoMvpLigado(), abas = abasNoModo(mvp);
+  document.body.classList.toggle('modo-mvp', mvp);
+  document.querySelectorAll('#abas .aba').forEach((b) => { b.hidden = !abas.includes(b.dataset.aba); });
+  if (estado.usuario) mostrarPet(!mvp);
+  if (estado.usuario && !telaNoModo(estado.aba, mvp)) irPara('hoje');
+}
 
 function irPara(aba, { deLado = false } = {}) {
+  if (!telaNoModo(aba === 'calendario' ? 'semana' : aba, modoMvpLigado())) aba = 'hoje';   // modo MVP: tela de fora → Hoje
   if (estado.aba === 'diario' && aba !== 'diario') { pararDeOuvir(); salvarAgora(); }
   if (estado.aba === 'tarefa' && aba !== 'tarefa') fecharTarefa();
   if (aba !== estado.aba) { limparSelecao(); fecharPainel(); }
@@ -106,12 +120,11 @@ function abrirCalendario(modo) {
   if (modo === 'mes') abrirLista('calendario'); else irPara('semana');
 }
 aoTrocarCalendario(abrirCalendario);
-// "Sem dia" (o que era a Caixa de entrada): Todas, só com as tarefas sem dia
-function abrirSemDia() { abrirLista('todas', null, null, { semDia: true }); }
-aoAbrirSemDia(abrirSemDia);
+// Todas com um filtro ligado: "Sem dia" (o que era a Caixa), "Ficou para trás", "Aguardando" ou "Em andamento"
+aoAbrirTodasCom((filtro) => abrirLista('todas', null, null, { filtro }));
 
-function abrirLista(tipo, area = null, subgrupo = null, { semDia = false } = {}) {
-  if (tipo === 'todas') filtrarSemDia(semDia);
+function abrirLista(tipo, area = null, subgrupo = null, { filtro = null } = {}) {
+  if (tipo === 'todas') filtrarTodas(filtro);
   fecharPainel();
   limparSelecao();
   prepararLista(tipo, area, subgrupo);
@@ -208,7 +221,7 @@ async function entrar(usuario) {
   $('tela-entrar').hidden = true;
   $('abas').hidden = false;
   document.body.classList.add('logado');
-  mostrarPet(true);
+  mostrarPet(!modoMvpLigado());
   mostrarEstado('Carregando…');
   if (!estado.carregadoEm) mostrarCarregando();
   try {
@@ -218,7 +231,7 @@ async function entrar(usuario) {
     mostrarSemBanco();
     return;
   }
-  if (await carregar()) { irPara('hoje'); retomarChama(); }
+  if (await carregar()) { irPara('hoje'); retomarChama(); aoAbrirOTravei(); }
 }
 
 // Abertas + feitas desde segunda (para as luzes do dia e o varal da semana).
@@ -316,6 +329,8 @@ function ligar() {
   $('ouvir-tela').addEventListener('click', ouvirTela);
   $('abrir-ajustes').addEventListener('click', () => { desenharFuncoes(); abrirFolha('folha-ajustes'); });
   $('fechar-ajustes').addEventListener('click', () => fecharFolha('folha-ajustes'));
+  $('modo-mvp').addEventListener('change', (e) => trocarModoMvp(e.target.checked));
+  aplicarModoMvp();
   $('exportar').addEventListener('click', exportar);
   $('sair').addEventListener('click', sair);
   const versao = $('versao-app');   // página velha guardada pode não ter esta linha: o app não quebra por isso

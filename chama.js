@@ -44,7 +44,7 @@ export function escolherChama(t) {
   }, p.nome)));
   $('folha-chama').replaceChildren(el('div', { classe: 'miolo' },
     el('div', { classe: 'alca' }),
-    el('div', { classe: 'centro' }, el('h2', { id: 'titulo-chama', style: 'justify-content:center' }, 'Chama'), el('p', { classe: 'data' }, t.titulo), el('p', { classe: 'ajuda' }, 'Foco numa tarefa só, com tempo.')),
+    el('div', { classe: 'centro' }, el('h2', { id: 'titulo-chama', style: 'justify-content:center' }, 'Foco · Chama'), el('p', { classe: 'data' }, t.titulo), el('p', { classe: 'ajuda' }, 'Foco numa tarefa só, com tempo.')),
     el('p', { classe: 'rotulo' }, 'quanto tempo'),
     caixa,
     explica,

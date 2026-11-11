@@ -53,7 +53,8 @@ button:disabled { opacity: .5; cursor: default; }
 .topo { display: flex; align-items: center; gap: 8px; padding-top: max(12px, env(safe-area-inset-top)); }
 .marca { display: flex; align-items: center; gap: 8px; font-family: var(--f-titulo); font-weight: 700; font-size: 1.2rem; margin: 0; }
 .faisca { width: 26px; height: 26px; color: var(--luz); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--luz) 70%, transparent)); flex: none; }
-.mov-vivo .marca .faisca { animation: respirar calc(6s * var(--t)) ease-in-out infinite; }
+/* O logo (lote 45): parado, sem brilho; o quadrado azul dele já tem os cantos redondos */
+.marca-logo { width: 28px; height: 28px; flex: none; }
 .estado { margin-left: auto; font-size: 1rem; color: var(--suave); white-space: nowrap; }
 .estado.pulso { animation: salvo-pulso calc(.6s * var(--t)) ease-out; }
 .estado.erro { color: var(--tinta); font-weight: 700; }
@@ -81,11 +82,13 @@ h2 .n { font-family: var(--f-texto); font-size: 1rem; color: var(--suave); font-
 .lamp .brilho { opacity: 0; transition: opacity calc(.3s * var(--t)); }
 .lamp.acesa .vidro { fill: var(--luz); stroke: var(--contorno); }
 .lamp.acesa .brilho { opacity: var(--halo); }
-.lamp .ok { opacity: 0; }
-.lamp.acesa .ok { opacity: 1; }
-.lamp .ok circle { fill: var(--feito); }
-.lamp .ok path { fill: none; stroke: #FFFFFF; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-:root[data-tema="noite"] .lamp .ok path { stroke: #0E1626; }
+/* A caixinha de concluir (lote 46): 26 px desenhada, com 48 px de toque no botão; feita, fica cheia e com o ✓ */
+.caixinha { overflow: visible; }
+.caixinha .caixa { fill: transparent; stroke: var(--suave); stroke-width: 2; transition: fill calc(.2s * var(--t)), stroke calc(.2s * var(--t)); }
+.caixinha .ok { fill: none; stroke: transparent; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.caixinha.feita .caixa { fill: var(--feito); stroke: var(--feito); }
+.caixinha.feita .ok { stroke: #FFFFFF; }
+:root[data-tema="noite"] .caixinha.feita .ok { stroke: #0E1626; }
 .acendendo { animation: acender calc(.45s * var(--t)) var(--mola); }
 .tarefa.recem .botao-lamp svg { animation: acender calc(.45s * var(--t)) var(--mola); }
 
@@ -122,7 +125,7 @@ section.grupo { margin-top: 22px; }
 .prioridades .tarefa { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 8px 0; }
 .prioridades .tarefa + .tarefa, .passos .tarefa + .tarefa { border-top: 1.5px solid color-mix(in srgb, var(--suave) 30%, transparent); }
 .botao-lamp { flex: none; width: 48px; height: 56px; border: 0; background: transparent; padding: 0; display: grid; place-items: center; }
-.botao-lamp svg { width: 30px; height: 40px; }
+.botao-lamp svg { width: 44px; height: 30px; }
 .tarefa .texto { flex: 1; min-width: 0; text-align: left; border: 0; background: transparent; padding: 6px 0; }
 .titulo-t { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 2px; background-repeat: no-repeat; background-position: 0 58%;
   transition: background-size calc(.35s * var(--t)) ease-out; overflow-wrap: anywhere; }
@@ -224,6 +227,9 @@ section.grupo { margin-top: 22px; }
 .chave { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
 .chave input { width: 52px; height: 30px; accent-color: var(--luz); }
 .chave.funcao { align-items: flex-start; padding: 6px 0; }
+/* O Hoje só com o de hoje (lote 44): o que ficou para trás vira uma linha que leva a Todas */
+.linha-atras { margin: 22px 0 0; }
+.filtros-todas { margin: 0 0 12px; }
 /* A tarefa em 3 blocos (lote 43) */
 .bloco-titulo { margin: 26px 0 4px; font-size: 1.05rem; color: var(--suave); text-transform: lowercase; letter-spacing: .02em; }
 .campo.peso > .fileira > .fileira, .campo.peso > .fileira > .lentes { display: contents; }
@@ -480,7 +486,7 @@ body.focando { overflow: hidden; }
 .tabela-tarefas tr.feita .link-tarefa { text-decoration: line-through; color: var(--suave); }
 .link-tarefa { background: none; border: 0; font: inherit; color: var(--tinta); text-align: left; cursor: pointer; padding: 0; }
 .marcas-tabela { display: block; font-size: .8rem; color: var(--suave); }
-.botao-lamp.mini svg { width: 22px; height: 28px; }
+.botao-lamp.mini svg { width: 34px; height: 23px; }
 .linha-do-tempo { display: grid; grid-auto-rows: minmax(34px, auto); align-items: center; gap: 4px 0; min-width: max-content; }
 .lt-dia { text-align: center; font-size: .75rem; color: var(--suave); grid-row: 1; display: flex; flex-direction: column; }
 .lt-dia strong { color: var(--tinta); font-size: .85rem; }
@@ -526,15 +532,6 @@ body.focando { overflow: hidden; }
 .quadro .ajuda { margin: 2px 0 10px; }
 .quadro .lista:empty { min-height: 56px; border: 2px dashed var(--linha); border-radius: 14px; }
 .quadro-fazer { border-color: color-mix(in srgb, var(--luz) 60%, var(--linha)); }
-/* Resumo no topo do Hoje (lote 36): três números e a barra do que foi feito na semana */
-.resumo { margin-top: 18px; padding: 14px 16px; }
-.resumo-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.resumo-n { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: 0; color: var(--tinta); font: inherit; cursor: pointer; padding: 4px; border-radius: 12px; }
-.resumo-n strong { font-family: var(--f-titulo); font-size: 1.6rem; line-height: 1.1; }
-.resumo-n span { font-size: .85rem; color: var(--suave); text-align: center; }
-.resumo-barra { height: 8px; margin-top: 12px; border-radius: 99px; background: var(--linha); overflow: hidden; }
-.resumo-barra span { display: block; height: 100%; border-radius: 99px; background: var(--luz); }
-.resumo-feitas { margin: 6px 0 0; font-size: .9rem; color: var(--suave); text-align: center; }
 /* Caixas do Hoje (28/10): cartões separados, como na tela Prioridades. Caixa vazia só aparece enquanto se arrasta, para receber */
 .caixa-hoje h2 .estrela-titulo { width: 22px; height: 22px; margin-right: 6px; }
 .caixa-hoje.vazia { display: none; }
@@ -616,3 +613,41 @@ body.mov-calmo { --t: .6; }
 body.mov-parado *, body.mov-parado *::before, body.mov-parado *::after { animation: none !important; transition: none !important; }
 body.mov-parado .rastro { stroke-dashoffset: 0; }
 body.mov-parado .momento .luz-meta { opacity: .95; }
+
+/* ---------- Hoje do modo MVP (T017, protótipo v8): 5 partes sempre à vista, a tarefa de agora em destaque com o Travei ---------- */
+.cadastrar { margin: 14px 0 6px; }
+.cadastrar h2.parte, .parte-hoje h2.parte { font-size: 1.05rem; margin: 18px 0 8px; }
+.parte-hoje .lista { min-height: 48px; }
+.parte-hoje .lista:empty::before { content: "Arraste uma tarefa para cá"; display: flex; align-items: center; min-height: 48px; color: var(--suave); border-bottom: 1px solid var(--linha); }
+.parte-hoje.caixa-alvo .lista:empty::before { font-weight: 700; }
+.tarefa.agora { flex-wrap: wrap; box-shadow: inset 4px 0 0 var(--luz), 0 3px 0 var(--linha); }
+.tarefa.agora .titulo-t { font-size: 1.1em; }
+.tarefa .travei-agora { flex-basis: 100%; padding: 0 0 6px 44px; }
+.tarefa .travei-agora .btn { width: auto; min-width: 140px; }
+.travei-topo { margin: 6px 0 14px; }
+.travei-topo .btn { width: 100%; }
+
+/* ---------- Travei em conversa (T023; protótipo v8 do MVP, 10/11/2026) ---------- */
+#tela-travei { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: 0; }
+#tela-travei[hidden] { display: none; }
+#tela-travei .tv-rolagem { flex: 1; }
+#tela-travei .caminho { color: var(--suave); font-weight: 700; margin: 4px 0 0; overflow-wrap: anywhere; }
+#tela-travei .titulo { font-family: var(--f-titulo); font-size: 1.9rem; margin: 2px 0 0; }
+.tv-conversa { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; padding-bottom: 16px; }
+.tv-b { max-width: 88%; padding: 12px 16px; border-radius: 16px; font-size: 1.1rem; line-height: 1.5; border: 1px solid var(--linha); background: var(--cartao); overflow-wrap: anywhere; white-space: pre-line; }
+.tv-b.eu { align-self: flex-end; background: var(--acao); color: var(--acao-tinta); border-color: var(--acao); }
+.tv-b.ela { align-self: flex-start; }
+.tv-b .quem { display: block; font-size: .95rem; font-weight: 700; color: var(--suave); margin-bottom: 4px; }
+.tv-b.passo { border-width: 2px; border-color: var(--acao); }
+.tv-b .tv-tecnica, .tv-b .tv-aviso { display: block; margin-top: 8px; font-size: .95rem; color: var(--suave); }
+.tv-b .tv-mapa { margin: 4px 0 0; padding-left: 1.3em; }
+.tv-b.crise p { margin: 0 0 8px; }
+.tv-contatos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tv-contatos .btn { display: inline-flex; align-items: center; min-height: 48px; text-decoration: none; }
+.tv-acoes { display: flex; gap: 8px; align-self: flex-start; flex-wrap: wrap; }
+.btn.estreito { min-height: 48px; padding: 0 16px; }
+.tv-rodape { position: sticky; bottom: 0; background: var(--fundo); border-top: 1px solid var(--linha); padding: 12px 0; }
+.tv-rodape .linha { display: flex; gap: 8px; align-items: center; }
+.tv-rodape .tv-campo { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 2px solid var(--borda-campo); background: var(--cartao); color: var(--tinta); font: inherit; }
+#tela-travei .emergencia { padding: 8px 0 16px; }
+#tela-travei .emergencia .btn { width: 100%; }

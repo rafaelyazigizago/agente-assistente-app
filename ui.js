@@ -1,4 +1,4 @@
-// Centelha · peças de tela reaproveitadas: criar elementos, a lâmpada, faíscas, aviso com desfazer, folhas, "Salvo ✓" e ouvir.
+// Centelha · peças de tela reaproveitadas: criar elementos, a caixinha de concluir, a lâmpada, faíscas, aviso com desfazer, folhas, "Salvo ✓" e ouvir.
 export const $ = (id) => document.getElementById(id);
 
 export function el(tag, props = {}, ...filhos) {
@@ -21,14 +21,15 @@ export const iconeEl = (nome, classe = '') => el('span', { html: icone(nome, cla
 const VIDRO = '<circle class="brilho" cx="15" cy="13" r="15" fill="url(#g-brilho)" style="color:var(--luz)"/>' +
   '<path class="vidro" d="M15 2a10.5 10.5 0 0 0-6 19.2c1.2.9 1.8 2.1 1.8 3.5V27h8.4v-2.3c0-1.4.6-2.6 1.8-3.5A10.5 10.5 0 0 0 15 2z"/>' +
   '<rect class="base" x="10.6" y="28.3" width="8.8" height="2.6" rx="1.2"/><rect class="base" x="11.8" y="32" width="6.4" height="2.6" rx="1.2"/>';
-const OK = '<g class="ok"><circle cx="23" cy="31" r="6"/><path d="M20.3 31.1l1.8 1.8 3.5-3.6"/></g>';
 
-// A lâmpada que serve de caixinha de marcar. Acesa = feita (com o ✓, para não depender só da cor).
-export function lampada(acesa, comOk = true) {
-  return `<svg viewBox="0 0 30 40" class="lamp${acesa ? ' acesa' : ''}" aria-hidden="true">${VIDRO}${comOk ? OK : ''}</svg>`;
-}
 export const lampadaInterna = (acesa, x, y, l, a) =>
   `<svg x="${x}" y="${y}" width="${l}" height="${a}" viewBox="0 0 30 40" class="lamp${acesa ? ' acesa' : ''}">${VIDRO}</svg>`;
+
+// A caixinha de concluir (lote 46, achado A1: a lâmpada não parecia uma caixinha; decisão 1 = A, 28/10).
+// Feita = caixinha cheia com o ✓ (não depende só da cor); a lâmpada pequena ao lado acende como resposta.
+export const caixinha = (feita) =>
+  `<svg viewBox="0 0 44 30" class="caixinha${feita ? ' feita' : ''}" aria-hidden="true"><rect class="caixa" x="1.5" y="2" width="26" height="26" rx="7"/>` +
+  `<path class="ok" d="M8.5 15.4l4.2 4.2 8.4-8.6"/>${lampadaInterna(feita, 30, 6, 13, 18)}</svg>`;
 
 export const movimento = () => document.body.dataset.movimento || 'vivo';
 

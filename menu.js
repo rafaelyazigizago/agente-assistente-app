@@ -9,6 +9,7 @@ import { ligarSoltar } from './arrastar.js';
 import { trazerParaHoje, emLote, moverGrupo } from './acoes.js';
 import { visualDoGrupo, visualDaLista, comEmoji } from './listas.js';
 import { usavel } from './funcoes.js';
+import { modoMvpLigado } from './modo-mvp.js';
 
 let ir = () => {};
 let abrirLista = () => {};
@@ -64,8 +65,11 @@ export function desenharMenu() {
         () => abrirLista('sub', g.nome, s.nome), 'menu-sub'), comEmoji(s.nome ?? 'Sem subgrupo', vs)), vs), (ts) => moverGrupo(ts, g.nome, s.nome)); }) : null);
   });
 
+  const marca = el('p', { classe: 'marca menu-marca', html: `${icone('logo', 'marca-logo')}<span>Centelha</span>` });
+  // Modo MVP: só o Hoje (Calendário, Diário e as Listas ficam escondidos, sem apagar nada)
+  if (modoMvpLigado()) { menu.replaceChildren(marca, fixas[0]); return; }
   menu.replaceChildren(
-    el('p', { classe: 'marca menu-marca', html: `${icone('faisca', 'faisca')}<span>Centelha</span>` }),
+    marca,
     ...fixas,
     el('p', { classe: 'menu-titulo' }, 'Listas'),
     ...doTopoDasListas,

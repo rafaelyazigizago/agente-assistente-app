@@ -4,8 +4,8 @@ import { COLUNAS_QUADRO, colunaDe, barraNaLinha, segundaDaSemana, temMarca, sema
 import { somarDias, rotuloDia, paraISO } from './datas.js';
 import { usavel } from './funcoes.js';
 import { estado, alternarFeita, moverPara } from './estado.js';
-import { linha, abrir, irParaSemDia } from './telas.js';
-import { el, lampada } from './ui.js';
+import { linha, abrir, irParaTodas } from './telas.js';
+import { el, caixinha } from './ui.js';
 
 // ---------- Quadro (Kanban): A fazer · Em andamento · Aguardando · Feitas. Arrastar entre colunas muda a situação ----------
 export function quadro(tarefas, opcoes, ordem) {
@@ -56,7 +56,7 @@ export function tabela(tarefas, redesenhar) {
     const passos = estado.passos.get(t.id);
     const marcas = [t.prioridade_semana ? '★' : '', temMarca(t, 'importante') ? 'Importante' : '', temMarca(t, 'urgente') ? 'Urgente' : ''].filter(Boolean).join(' · ');
     return el('tr', { classe: feita ? 'feita' : '', 'data-id': t.id },
-      el('td', {}, el('button', { type: 'button', classe: 'botao-lamp mini', 'aria-pressed': String(feita), 'aria-label': `${feita ? 'Feita' : 'Marcar como feita'}: ${t.titulo}`, html: lampada(feita), onclick: () => alternarFeita(t) })),
+      el('td', {}, el('button', { type: 'button', classe: 'botao-lamp mini', 'aria-pressed': String(feita), 'aria-label': `Concluir: ${t.titulo}`, html: caixinha(feita), onclick: () => alternarFeita(t) })),
       el('td', {}, el('button', { type: 'button', classe: 'link-tarefa', onclick: () => abrir(t) }, t.titulo), marcas ? el('span', { classe: 'marcas-tabela' }, marcas) : null),
       el('td', {}, t.dia ? rotuloDia(t.dia) : '—'),
       el('td', {}, grupoDe(t) || '—'),
@@ -143,7 +143,7 @@ export function calendario(tarefas, opcoes, redesenhar) {
       doEscolhido.length
         ? el('div', { classe: 'lista', 'data-reordena': true, 'data-dia-lista': diaCal }, doEscolhido.map((t) => linha(t, opcoes)))
         : el('p', { classe: 'vazio' }, 'Nada marcado para este dia. Arraste uma tarefa para cá, ou escolha este dia na tarefa aberta.')),
-    semDia ? el('button', { type: 'button', classe: 'link-leve', onclick: irParaSemDia }, `${semDia} sem dia: ver em Todas`) : null);
+    semDia ? el('button', { type: 'button', classe: 'link-leve', onclick: () => irParaTodas('semdia') }, `${semDia} sem dia: ver em Todas`) : null);
 }
 
 // Soltar uma tarefa arrastada num dia do calendário muda a data dela (com aviso e Desfazer, como sempre).

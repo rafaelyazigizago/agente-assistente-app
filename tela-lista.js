@@ -3,8 +3,8 @@
 // Cartões com estrela, "+ Adicionar tarefa" no fim e "Concluídas" recolhida embaixo.
 // Meio-termo com a regra "nada se mexe sozinho": a tarefa concluída fica no lugar, riscada, enquanto você está na lista;
 // ao abrir a lista de novo, ela já está em "Concluídas".
-import { agruparPorArea, QUADRANTES, quadranteDe, naMatriz } from './calculos.js';
-import { estado, lugar, anotar } from './estado.js';
+import { agruparPorArea, QUADRANTES, quadranteDe, naMatriz, situacaoDe } from './calculos.js';
+import { estado, lugar, anotar, recomecar } from './estado.js';
 import { dobra, linha, comBotoesDeDia, trocaDoCalendario } from './telas.js';
 import { comecarSelecao, limparSelecao } from './acoes.js';
 import { $, el, icone } from './ui.js';
@@ -91,16 +91,33 @@ function matrizDaLista(ativas, opcoes) {
     fora ? el('p', { classe: 'ajuda' }, `${fora} sem marca e sem dia até o fim da semana ficam de fora.`) : null);
 }
 
-// "Sem dia" (lote 42, o que era a Caixa de entrada): em Todas, só as tarefas sem dia, com os botões Hoje · Amanhã · Outro dia
-let soSemDia = false;
-export const filtrarSemDia = (sim) => { soSemDia = !!sim; };
+// Os filtros de Todas. "Sem dia" (lote 42, o que era a Caixa de entrada) e, desde o lote 44, o que saiu do Hoje:
+// "Ficou para trás" (com o Recomeçar), "Aguardando" e "Em andamento" de qualquer dia. Um ligado por vez; tocar de novo desliga.
+const FILTROS = [
+  ['semdia', 'Sem dia', (t) => !t.dia],
+  ['atras', 'Ficou para trás', (t) => !!t.dia && t.dia < estado.hoje],
+  ['aguardando', 'Aguardando', (t) => situacaoDe(t) === 'aguardando'],
+  ['andamento', 'Em andamento', (t) => situacaoDe(t) === 'andamento'],
+];
+let filtro = null;
+export const filtrarTodas = (qual) => { filtro = FILTROS.some(([k]) => k === qual) ? qual : null; };
 
 // Todas: cada grupo com os seus subgrupos, numa página só. Arrastar para outro subgrupo daqui, ou para o menu da
 // esquerda, classifica a tarefa (no notebook). As sem grupo ficam por último, para irem sendo classificadas.
 function desenharTodas(L, tela, todasAtivas, concluidas, opcoesBase) {
-  const semDia = todasAtivas.filter((t) => !t.dia).length;
-  const ativas = soSemDia ? todasAtivas.filter((t) => !t.dia) : todasAtivas;
-  const opcoes = soSemDia ? { ...opcoesBase, botoesDeDia: true } : opcoesBase;
+  const doFiltro = FILTROS.find(([k]) => k === filtro)?.[2];
+  const ativas = doFiltro ? todasAtivas.filter(doFiltro) : todasAtivas;
+  const opcoes = filtro === 'semdia' || filtro === 'atras' ? { ...opcoesBase, botoesDeDia: true } : opcoesBase;
+  const chips = FILTROS.map(([k, nome, f]) => [k, nome, todasAtivas.filter(f).length]).filter(([k, , n]) => n || k === filtro);
+  const recomeco = el('div', { classe: 'fileira' });
+  const pedir = () => recomeco.replaceChildren(el('button', {
+    type: 'button', classe: 'btn claro', 'data-mantem-aviso': true,
+    onclick: () => recomeco.replaceChildren(
+      el('span', { classe: 'ajuda' }, `Isso traz ${ativas.length} tarefas para hoje.`),
+      el('button', { type: 'button', classe: 'btn', 'data-mantem-aviso': true, onclick: () => recomecar(ativas) }, `Sim, trazer ${ativas.length}`),
+      el('button', { type: 'button', classe: 'btn claro', onclick: pedir }, 'Não')),
+  }, 'Recomeçar: trazer todas para hoje'));
+  if (filtro === 'atras' && ativas.length > 1) pedir();
   const blocos = agruparPorArea(ativas, lugar).map((g) => el('section', { classe: 'grupo todas-grupo' },
     el('h2', {}, g.nome ?? 'Sem grupo', el('span', { classe: 'n' }, String(g.total))),
     ...g.subgrupos.flatMap((s) => [
@@ -113,20 +130,25 @@ function desenharTodas(L, tela, todasAtivas, concluidas, opcoesBase) {
     trocaDeVisao(L),
     el('div', { classe: 'fileira', style: 'margin:8px 0 14px' },
       el('span', { classe: 'ajuda', style: 'align-self:center;flex:1' }, `${ativas.length} ${ativas.length === 1 ? 'aberta' : 'abertas'} · arraste para outro subgrupo ou para o menu para classificar`),
-      el('button', { type: 'button', classe: 'pilula', id: 'so-sem-dia', 'aria-pressed': String(soSemDia), 'data-mantem-aviso': true,
-        onclick: () => { soSemDia = !soSemDia; desenharLista(); } }, `Sem dia · ${semDia}`),
+
       el('button', { type: 'button', classe: 'pilula', 'aria-pressed': String(estado.selecionando), 'data-mantem-aviso': true,
         onclick: () => (estado.selecionando ? limparSelecao() : comecarSelecao()) }, estado.selecionando ? 'Parar de escolher' : 'Escolher várias')),
-    ...(blocos.length ? blocos : [el('p', { classe: 'vazio' }, soSemDia ? 'Nenhuma tarefa sem dia. Tudo tem o seu dia.' : 'Nenhuma tarefa aberta. Anote abaixo.')]),
+    chips.length ? el('div', { classe: 'fileira filtros-todas', role: 'group', 'aria-label': 'Mostrar só' }, chips.map(([k, nome, n]) => el('button', {
+      type: 'button', classe: 'pilula', id: `filtro-${k}`, 'aria-pressed': String(filtro === k), 'data-mantem-aviso': true,
+      onclick: () => { filtro = filtro === k ? null : k; desenharLista(); },
+    }, `${nome} · ${n}`))) : null,
+    filtro === 'atras' && ativas.length > 1 ? el('p', { classe: 'ajuda' }, 'Sem pressa. Traga o que cabe hoje e deixe o resto aqui.') : null,
+    filtro === 'atras' && ativas.length > 1 ? recomeco : null,
+    ...(blocos.length ? blocos : [el('p', { classe: 'vazio' }, filtro ? 'Nenhuma tarefa neste filtro.' : 'Nenhuma tarefa aberta. Anote abaixo.')]),
     adicionar(L),
-    concluidas.length && !soSemDia ? dobra('lista-concluidas', 'Concluídas', concluidas.length, el('div', { classe: 'lista' }, concluidas.map((t) => linha(t, opcoesBase))), abertas) : null,
+    concluidas.length && !filtro ? dobra('lista-concluidas', 'Concluídas', concluidas.length, el('div', { classe: 'lista' }, concluidas.map((t) => linha(t, opcoesBase))), abertas) : null,
   ].filter(Boolean));
 }
 
 // ---------- Ver por tipos (28/10, como no Vikunja): Lista · Quadro · Tabela · Linha do tempo ----------
 // A escolha fica guardada neste aparelho, para cada lista (como o resto de "Do seu jeito").
 // A Lista vem sempre; as outras, só ligadas em "Do seu jeito" (28/10)
-const TODAS_VISOES = [['lista', 'Lista'], ['quadro', 'Quadro'], ['tabela', 'Tabela'], ['linha', 'Linha do tempo'], ['calendario', 'Calendário'], ['matriz', 'Matriz']];
+const TODAS_VISOES = [['lista', 'Lista'], ['quadro', 'Quadro'], ['tabela', 'Tabela'], ['linha', 'Linha do tempo'], ['calendario', 'Calendário'], ['matriz', 'O que fazer primeiro']];
 const visoesLigadas = () => TODAS_VISOES.filter(([v]) => v === 'lista' || usavel(v));
 const chaveVisao = (L) => `centelha-visao|${L.tipo}|${L.area ?? ''}|${L.subgrupo ?? ''}`;
 function visaoDe(L) {
@@ -142,7 +164,7 @@ function trocaDeVisao(L) {
   }, nome)));
 }
 const nomeDoProjeto = (id) => estado.projetos.find((p) => p.id === id)?.nome ?? 'Projeto';
-const tituloDe = (L) => (L.tipo === 'calendario' ? 'Calendário' : L.tipo === 'todas' ? 'Todas' : L.tipo === 'matriz' ? 'Matriz' : L.tipo === 'prioridades' ? 'Prioridades da semana'
+const tituloDe = (L) => (L.tipo === 'calendario' ? 'Calendário' : L.tipo === 'todas' ? 'Todas' : L.tipo === 'matriz' ? 'O que fazer primeiro' : L.tipo === 'prioridades' ? 'Prioridades da semana'
   : L.tipo === 'projeto' ? nomeDoProjeto(L.area) : L.tipo === 'area' ? comEmoji(L.area, visualDoGrupo(L.area)) : comEmoji(L.subgrupo ?? 'Sem subgrupo', visualDaLista(L.area, L.subgrupo)));
 // Emoji e cor (0007): no grupo e nas listas com nome
 const podeVisual = (L) => usavel('visual') && !!L.area && (L.tipo === 'area' || (L.tipo === 'sub' && !!L.subgrupo));
@@ -160,7 +182,7 @@ function desenharVisao(L, tela, visao, todas, ativas, opcoes) {
     el('h1', { id: 'titulo-lista', style: 'margin-top:2px' }, tituloDe(L)),
     L.tipo === 'calendario' ? trocaDoCalendario('mes') : trocaDeVisao(L),
     el('p', { classe: 'ajuda', style: 'margin:8px 0 14px' }, visao === 'calendario' ? 'Toque num dia para ver a lista dele. Arraste uma tarefa para outro dia para mudar a data.' : visao === 'quadro' ? 'Arraste entre as colunas para mudar a situação. Soltar em "Feitas" acende a tarefa.'
-      : visao === 'tabela' ? 'Toque no nome de uma coluna para ordenar por ela.' : visao === 'matriz' ? 'Arraste uma tarefa para outro quadro, ou use o ⋯, para trocar as marcas.'
+      : visao === 'tabela' ? 'Toque no nome de uma coluna para ordenar por ela.' : visao === 'matriz' ? 'Arraste uma tarefa para outra caixa, ou use o ⋯, para trocar as marcas.'
       : 'Cada barra vai do início até o dia da tarefa. Toque para abrir.'),
     corpo,
   ].filter(Boolean));
@@ -171,7 +193,7 @@ function desenharVisao(L, tela, visao, todas, ativas, opcoes) {
 function desenharMatriz(tela, ativas, opcoes) {
   tela.replaceChildren(
     el('p', { classe: 'data', style: 'margin-top:18px' }, 'Importante × urgente'),
-    el('h1', { id: 'titulo-lista', style: 'margin-top:2px' }, 'Matriz'),
+    el('h1', { id: 'titulo-lista', style: 'margin-top:2px' }, 'O que fazer primeiro'),
     el('p', { classe: 'ajuda', style: 'margin:8px 0 14px' }, 'Arraste uma tarefa para outro quadro, ou use o ⋯, para trocar as marcas. A estrela da semana continua à parte.'),
     matrizQuadros(ativas, opcoes),
   );

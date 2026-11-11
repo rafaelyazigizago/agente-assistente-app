@@ -59,6 +59,14 @@ export async function mudarTarefa(id, patch) {
   mudouUma(await banco.from('tarefas').update(patch).eq('id', id).select('id'));
 }
 
+// Hoje do MVP (desde a 0008): arrastar uma tarefa no Hoje marca o dia como organizado. Um por dono e data (o banco põe o dono).
+export async function marcarDiaOrganizado(data) {
+  const ja = exigir(await banco.from('dias').select('id,organizado').eq('data', data).maybeSingle());
+  if (ja?.organizado) return;
+  if (ja) { mudouUma(await banco.from('dias').update({ organizado: true }).eq('id', ja.id).select('id')); return; }
+  exigir(await banco.from('dias').insert({ data, organizado: true }).select('id'));
+}
+
 export async function criarTarefa(dados) {
   return exigir(await banco.from('tarefas').insert(dados).select(campos()).single());
 }
@@ -112,8 +120,24 @@ export async function mudarPasso(id, patch) {
   mudouUma(await banco.from('subtarefas').update(patch).eq('id', id).select('id'));
 }
 
-export async function registrarTravada(dados) {
-  exigir(await banco.from('travadas').insert(dados));
+// O Travei em conversa (T023): só app/travei.js chama estas. Cada linha é um passo de uma conversa (conversa_id).
+export async function criarTravada(linha) {
+  return exigir(await banco.from('travadas').insert(linha).select('id').single()).id;
+}
+export async function mudarTravada(id, patch) {
+  mudouUma(await banco.from('travadas').update(patch).eq('id', id).select('id'));
+}
+// "pendente" de antes do limite vira "sem_resposta" (ao abrir o app)
+export async function fecharTravadasPendentes(limiteISO) {
+  const velhas = exigir(await banco.from('travadas').select('id').eq('resultado', 'pendente').lt('criado_em', limiteISO).limit(1));
+  if (!velhas?.length) return;   // quase sempre: nada a gravar ao abrir
+  exigir(await banco.from('travadas').update({ resultado: 'sem_resposta' }).eq('resultado', 'pendente').lt('criado_em', limiteISO).select('id'));
+}
+// A função "travei" (contrato em contracts/travei-funcao.md). Erro de rede ou da função: quem chama usa a Base.
+export async function pedirAoTravei(corpo) {
+  const { data, error } = await banco.functions.invoke('travei', { body: corpo });
+  if (error) throw error;
+  return data;
 }
 
 // Diário: sempre privado (o banco garante). Uma entrada por dia.

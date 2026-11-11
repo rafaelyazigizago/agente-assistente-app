@@ -1,13 +1,14 @@
 // Centelha · telas Hoje e Semana (no Calendário) e os botões de dia (o que era a Caixa de entrada).
 import { diaPorExtenso, rotuloDia, somarDias, interpretar } from './datas.js';
-import { lampadasDoDia, varalDaSemana, tarefasDoDia, passaNasLentes, segundaDaSemana, CAIXAS_DO_HOJE, caixaDoHoje, yNoFio, FIO_SEMANA, FIO_DIA, resumoDoTopo, temMarca, REPETICOES, duracaoTexto } from './calculos.js';
-import { estado, secao, alternarFeita, moverPara, recomecar, anotar } from './estado.js';
-import { $, el, icone, lampada, lampadaInterna, reiniciar, movimento } from './ui.js';
+import { lampadasDoDia, varalDaSemana, tarefasDoDia, passaNasLentes, segundaDaSemana, CAIXAS_DO_HOJE, caixaDoHoje, yNoFio, FIO_DIA, temMarca, REPETICOES, duracaoTexto } from './calculos.js';
+import { estado, secao, alternarFeita, moverPara, anotar } from './estado.js';
+import { $, el, icone, caixinha, lampadaInterna, reiniciar, movimento } from './ui.js';
 import { alternarEstrela, abrirAcoes, alternarSelecao, selecao } from './acoes.js';
 import { ligarArrastar } from './arrastar.js';
 import { corDe } from './etiquetas.js';
 import { usavel } from './funcoes.js';
 import { matrizQuadros } from './tela-lista.js';
+import { modoMvpLigado } from './modo-mvp.js';
 
 const LENTES = [['dinheiro', 'Traz renda'], ['tempo', 'Libera tempo'], ['amor', 'Quem eu amo']];   // "Traz renda" e "Libera tempo": nomes novos (28/10; o 2º para não confundir com "Quanto tempo deve levar")
 const dobrasAbertas = new Set();
@@ -16,9 +17,10 @@ export const aoAbrirTarefa = (f) => { abrirTarefa = f; };
 export const abrir = (t) => abrirTarefa(t);   // para as visões (visoes.js), que não usam o cartão
 const visiveis = (t) => t.estado !== 'cancelada';
 
-// ---------- Uma tarefa: a lâmpada, o título, o porquê, a linha de detalhes e os botões ----------
+// ---------- Uma tarefa: a caixinha de concluir, o título, o porquê, a linha de detalhes e os botões ----------
 // Como no Microsoft To Do: estrela à direita (opcional), ⋯ ou clique direito abre as ações, Shift+clique escolhe várias.
-export function linhaTarefa(t, { umToque, semGrupo, estrela, semProjeto } = {}) {
+// aoTocar (Hoje do MVP): tocar no texto escolhe a tarefa em vez de abrir. semDia: sem a marca do dia (FR-021, sem atraso).
+export function linhaTarefa(t, { umToque, semGrupo, estrela, semProjeto, aoTocar, semDia } = {}) {
   const feita = t.estado === 'feita';
   const marca = estado.marcas.get(t.id);
   const escolhida = selecao.has(t.id);
@@ -26,7 +28,7 @@ export function linhaTarefa(t, { umToque, semGrupo, estrela, semProjeto } = {}) 
     escolhida && 'escolhida', estado.painel === t.id && 'no-painel'].filter(Boolean).join(' ');
   t.nova = false;
   const marcas = [];
-  if (t.dia && !['hoje', 'prioridade', 'amanha'].includes(secao(t)) && !marca) marcas.push(el('span', { classe: 'marca-t' }, rotuloDia(t.dia)));
+  if (!semDia && t.dia && !['hoje', 'prioridade', 'amanha'].includes(secao(t)) && !marca) marcas.push(el('span', { classe: 'marca-t' }, rotuloDia(t.dia)));
   const passos = estado.passos.get(t.id);
   if (passos?.total) marcas.push(el('span', { classe: 'marca-t' }, `${passos.feitos} de ${passos.total} passos`));
   if (t.minutos && usavel('tempo')) marcas.push(el('span', { classe: 'marca-t' }, `~${duracaoTexto(t.minutos * 60000)}`));
@@ -44,20 +46,20 @@ export function linhaTarefa(t, { umToque, semGrupo, estrela, semProjeto } = {}) 
   const cartao = el('div', { classe: classes, 'data-id': t.id, oncontextmenu: (e) => { e.preventDefault(); if (!estado.segurando) abrirAcoes(t); } },   // no celular, segurar é arrastar (arrastar.js)
     el('button', {
       type: 'button', classe: 'botao-lamp', 'aria-pressed': String(feita), 'data-mantem-aviso': true,
-      'aria-label': `${feita ? 'Feita' : 'Marcar como feita'}: ${t.titulo}`, html: lampada(feita),
+      'aria-label': `Concluir: ${t.titulo}`, html: caixinha(feita),
       onclick: (e) => alternarFeita(t, e.currentTarget),
     }),
     el('button', {
-      type: 'button', classe: 'texto', 'aria-label': `${estado.selecionando ? (escolhida ? 'Desmarcar' : 'Escolher') : 'Abrir'}: ${t.titulo}`,
+      type: 'button', classe: 'texto', 'aria-label': `${estado.selecionando ? (escolhida ? 'Desmarcar' : 'Escolher') : aoTocar ? 'Destacar' : 'Abrir'}: ${t.titulo}`,
       'aria-pressed': estado.selecionando ? String(escolhida) : null, 'data-mantem-aviso': estado.selecionando || null,
-      onclick: (e) => (e.shiftKey || estado.selecionando ? alternarSelecao(t) : abrirTarefa(t)),
+      onclick: (e) => (e.shiftKey || estado.selecionando ? alternarSelecao(t) : aoTocar ? aoTocar(t) : abrirTarefa(t)),
     },
       el('span', { classe: 'titulo-t' }, t.titulo),
       t.porque ? el('span', { classe: 'porque', html: `${icone('faisca')}<span></span>` }) : null,
       marcas.length ? el('span', { classe: 'marcas' }, marcas) : null),
     umToque && !feita && !estado.selecionando ? el('button', {
       type: 'button', classe: 'pilula um-toque', 'data-mantem-aviso': true,
-      onclick: () => moverPara(t, umToque === 'Amanhã' ? somarDias(estado.hoje, 1) : estado.hoje),
+      onclick: () => moverPara(t, umToque === 'Para amanhã' ? somarDias(estado.hoje, 1) : estado.hoje),
     }, umToque) : null,
     estrela ? el('button', {
       type: 'button', classe: 'icone-btn leve estrela', 'aria-pressed': String(!!t.prioridade_semana), 'data-mantem-aviso': true,
@@ -78,7 +80,6 @@ function comPorque(no, t) {
   return no;
 }
 export const linha = (t, o) => comPorque(linhaTarefa(t, o), t);
-const lista = (tarefas, o) => el('div', { classe: 'lista' }, tarefas.map((t) => linha(t, o)));
 
 export function dobra(id, titulo, quantos, conteudo, conjunto = dobrasAbertas, classe = '') {
   const aberta = conjunto.has(id);
@@ -97,23 +98,6 @@ export function dobra(id, titulo, quantos, conteudo, conjunto = dobrasAbertas, c
   gaveta.inert = !aberta;   // fechada, nada de dentro recebe o foco
   caixa.append(botao, gaveta);
   return caixa;
-}
-
-// ---------- O resumo no topo (lote 36): Hoje · Esta semana · Mais para frente, e a barra do que foi feito ----------
-function resumo() {
-  const r = resumoDoTopo(estado.tarefas.filter(visiveis), estado.hoje);
-  const numero = (n, nome, ir) => el('button', { type: 'button', classe: 'resumo-n', onclick: ir }, el('strong', {}, String(n)), el('span', {}, nome));
-  return el('section', { classe: 'resumo cartao', 'aria-label': 'Resumo' },
-    el('div', { classe: 'resumo-linha' },
-      numero(r.hoje, 'Hoje', () => document.querySelector('#tela-hoje [data-caixa-hoje="manha"]')?.scrollIntoView({ behavior: movimento() === 'vivo' ? 'smooth' : 'auto' })),
-      numero(r.semana, 'Esta semana', () => document.querySelector('.aba[data-aba="semana"]')?.click()),
-      numero(r.depois, 'Mais para frente', () => {   // abre "Próximos dias" (se estiver fechada) e vai até ela
-        const proximos = [...document.querySelectorAll('#tela-hoje .dobra > button')].find((b) => b.textContent.includes('Próximos dias'));
-        if (proximos?.getAttribute('aria-expanded') === 'false') proximos.click();
-        proximos?.scrollIntoView({ block: 'center' });
-      })),
-    el('div', { classe: 'resumo-barra', role: 'img', 'aria-label': `${r.feitas} feitas esta semana` }, el('span', { style: `width:${Math.round(r.fracao * 100)}%` })),
-    el('p', { classe: 'resumo-feitas' }, r.feitas === 1 ? '1 feita esta semana' : `${r.feitas} feitas esta semana`));
 }
 
 // ---------- Varal pequeno do dia ----------
@@ -136,7 +120,7 @@ function varalMini() {
   const numero = el('span', { classe: 'numero' + (subiu ? ' subiu' : '') }, String(acesas));
   return [
     el('div', { classe: 'varal-mini', 'aria-hidden': 'true', html: `<svg viewBox="0 0 ${largura} 56">${html}</svg>` }),
-    el('p', { classe: 'contagem' }, total ? numero : '', total ? ` de ${total} acesas` : 'Nenhuma lâmpada para hoje ainda'),
+    el('p', { classe: 'contagem' }, total ? numero : '', total ? ` de ${total} feitas hoje` : 'Nada marcado para hoje ainda'),
   ];
 }
 
@@ -176,9 +160,9 @@ function formAnotar() {
 }
 
 // ---------- HOJE ----------
-// Do dia | Matriz: só aparece com a Matriz ligada em "Do seu jeito"
+// Do dia | O que fazer primeiro (era "Matriz"; nome de 29/10): só aparece com a função ligada em Ajustes
 let modoHoje = 'dia';
-const trocaDoHoje = () => (usavel('matriz') ? el('div', { classe: 'fileira visoes', role: 'group', 'aria-label': 'Ver o Hoje como' }, [['dia', 'Do dia'], ['matriz', 'Matriz']].map(([m, nome]) => el('button', {
+const trocaDoHoje = () => (usavel('matriz') ? el('div', { classe: 'fileira visoes', role: 'group', 'aria-label': 'Ver o Hoje como' }, [['dia', 'Do dia'], ['matriz', 'O que fazer primeiro']].map(([m, nome]) => el('button', {
   type: 'button', classe: 'pilula', 'aria-pressed': String(modoHoje === m), onclick: () => { modoHoje = m; desenharHoje(); },
 }, nome))) : null);
 
@@ -191,7 +175,6 @@ export function desenharHoje() {
     el('p', { classe: 'data' }, hoje[0].toUpperCase() + hoje.slice(1)),
     ...varalMini(),
     formAnotar(),
-    resumo(),
     trocaDoHoje(),
   ];
 
@@ -204,10 +187,10 @@ export function desenharHoje() {
     if (c && t.estado === 'feita' && !estado.abertasNoInicio.has(t.id)) feitasAntes.push(t);
     else if (c) daCaixa.get(c).push(t);
   }
-  // A Matriz (lote 42): um jeito de ver o Hoje. As tarefas abertas de hoje nos 4 quadros; arrastar troca as marcas.
+  // O que fazer primeiro (a Matriz do lote 42): um jeito de ver o Hoje. As tarefas abertas de hoje nas 4 caixas; arrastar troca as marcas.
   if (usavel('matriz') && modoHoje === 'matriz') {
     const doDia = [...daCaixa.values()].flat().filter((t) => t.estado === 'aberta');
-    blocos.push(el('p', { classe: 'ajuda' }, 'As tarefas de hoje nos 4 quadros. Arraste para outro quadro, ou use o ⋯, para trocar as marcas.'), matrizQuadros(doDia, { estrela: true }));
+    blocos.push(el('p', { classe: 'ajuda' }, 'As tarefas de hoje em 4 caixas, da que fazer agora à que pode esperar. Arraste para outra caixa, ou use o ⋯, para trocar as marcas.'), matrizQuadros(doDia, { estrela: true }));
     tela.replaceChildren(...blocos.filter(Boolean));
     return;
   }
@@ -235,7 +218,7 @@ export function desenharHoje() {
       ? 'Nenhuma tarefa de hoje com essa lente. Abra uma tarefa para marcar as lentes dela.'
       : 'Nada marcado para hoje. Anote acima, traga algo de Todas (o filtro "Sem dia") ou arraste para uma das caixas.'));
   }
-  for (const c of partes) blocos.push(caixa(c, nomes[c], { umToque: 'Amanhã' }));
+  for (const c of partes) blocos.push(caixa(c, nomes[c], { umToque: 'Para amanhã' }));
   for (const c of ['andamento', 'aguardando']) {
     const tarefas = daCaixa.get(c).sort(ordemNaCaixa);
     const d = dobra(c, nomes[c], tarefas.length, listaDaCaixa(c, tarefas));
@@ -251,31 +234,13 @@ export function desenharHoje() {
     blocos.push(d);
   }
 
-  const semCaixa = (t) => !caixaDoHoje(t, secao(t));
-  const amanha = doTipo('amanha').filter(semCaixa).sort(ordenar);
-  if (amanha.length) blocos.push(el('section', { classe: 'grupo' }, el('h2', {}, 'Amanhã', el('span', { classe: 'n' }, String(amanha.length))), lista(amanha, { umToque: 'Hoje' })));
-
-  const depois = doTipo('depois').filter(semCaixa).sort((a, b) => a.dia.localeCompare(b.dia) || ordenar(a, b));
-  if (depois.length) blocos.push(dobra('depois', 'Próximos dias', depois.length, lista(depois, { umToque: 'Hoje' })));
-
-  const atras = doTipo('para-tras').filter(semCaixa).sort((a, b) => b.dia.localeCompare(a.dia) || ordenar(a, b));
-  if (atras.length) {
-    const abertas = atras.filter((t) => t.estado === 'aberta' && !estado.marcas.has(t.id));
-    const recomeco = el('div', { classe: 'fileira' });
-    const pedir = () => recomeco.replaceChildren(el('button', {
-      type: 'button', classe: 'btn claro', 'data-mantem-aviso': true,
-      onclick: () => recomeco.replaceChildren(
-        el('span', { classe: 'ajuda' }, `Isso traz ${abertas.length} tarefas para hoje.`),
-        el('button', { type: 'button', classe: 'btn', 'data-mantem-aviso': true, onclick: () => recomecar(abertas) }, `Sim, trazer ${abertas.length}`),
-        el('button', { type: 'button', classe: 'btn claro', onclick: pedir }, 'Não'),
-      ),
-    }, 'Recomeçar: trazer todas para hoje'));
-    if (abertas.length > 1) pedir();
-    blocos.push(dobra('atras', 'Ficou para trás', atras.length, [
-      el('p', { classe: 'ajuda' }, 'Sem pressa. Traga o que cabe hoje e deixe o resto aqui.'),
-      abertas.length > 1 ? recomeco : null,
-      lista(atras, { umToque: 'Hoje' }),
-    ]));
+  // Amanhã e Próximos dias ficam no Calendário; o que ficou para trás, em Todas (lote 44: "Aqui no Hoje entram as tarefas
+  // que eu marquei para hoje"). Fica uma linha só, para o atrasado não sumir da cabeça (lembrete externo, R7).
+  const atras = doTipo('para-tras').filter((t) => t.estado === 'aberta' && !caixaDoHoje(t, secao(t)));
+  // Modo MVP: sem contador de atrasadas (FR-019, Constitution III). A tarefa de ontem passa a aparecer no Hoje, sem marca (T017).
+  if (atras.length && !modoMvpLigado()) {
+    blocos.push(el('p', { classe: 'linha-atras' }, el('button', { type: 'button', classe: 'link-leve', id: 'ver-atras', onclick: () => irParaTodas('atras') },
+      `${atras.length} ${atras.length === 1 ? 'ficou' : 'ficaram'} para trás · ver em Todas`)));
   }
   tela.replaceChildren(...blocos.filter(Boolean));
 }
@@ -299,7 +264,7 @@ const listaDaCaixa = (c, tarefas, opcoes = {}) => el('div', { classe: 'lista', '
 
 // ---------- Os botões de dia: o que era a Caixa de entrada (desde o lote 42, em Todas, com o filtro "Sem dia") ----------
 export function comBotoesDeDia(no, t) {
-  if (estado.marcas.has(t.id) || t.estado !== 'aberta' || t.dia) return no;
+  if (estado.marcas.has(t.id) || t.estado !== 'aberta' || t.dia === estado.hoje) return no;
   const escolher = el('input', { type: 'date', 'aria-label': `Outro dia para ${t.titulo}`, hidden: true,
     onchange: (e) => { if (e.target.value) moverPara(t, e.target.value); } });
   no.append(el('div', { classe: 'fileira botoes-dia' },
@@ -312,17 +277,18 @@ export function comBotoesDeDia(no, t) {
 }
 
 // ---------- Calendário: Semana | Mês (lote 42). A troca e o "Sem dia" são abertos pelo app.js ----------
-let trocarCalendario = () => {}, abrirSemDia = () => {};
+let trocarCalendario = () => {}, abrirTodasCom = () => {};
 export const aoTrocarCalendario = (f) => { trocarCalendario = f; };
-export const aoAbrirSemDia = (f) => { abrirSemDia = f; };
-export const irParaSemDia = () => abrirSemDia();
+export const aoAbrirTodasCom = (f) => { abrirTodasCom = f; };
+// Todas com um filtro ligado: 'semdia', 'atras', 'aguardando' ou 'andamento'
+export const irParaTodas = (filtro) => abrirTodasCom(filtro);
 export function trocaDoCalendario(modo) {
   return el('div', { classe: 'fileira visoes', role: 'group', 'aria-label': 'Ver o calendário por' }, [['semana', 'Semana'], ['mes', 'Mês']].map(([m, nome]) => el('button', {
     type: 'button', classe: 'pilula', 'aria-pressed': String(m === modo), onclick: () => { if (m !== modo) trocarCalendario(m); },
   }, nome)));
 }
 
-// ---------- SEMANA: o varal ----------
+// ---------- SEMANA: "Sua semana", os 7 dias numa linha reta (lote 46; antes, um varal em curva) ----------
 let diaEscolhido = null;
 export function desenharSemana(entrando = false) {
   const tela = $('tela-semana');
@@ -332,10 +298,10 @@ export function desenharSemana(entrando = false) {
   const [, mesS, diaS] = segunda.split('-'), [, mesD, diaD] = domingo.split('-');
   const intervalo = mesS === mesD ? `${+diaS} a ${+diaD}` : `${+diaS}/${mesS} a ${+diaD}/${mesD}`;
 
-  let html = '<path class="fio" d="M2 18 Q90 74 180 40 T358 18"/>';
+  let html = '<path class="fio" d="M2 18 L358 18"/>';
   dias.forEach((d, i) => {
     const x = 22 + i * 52.6;
-    const y = yNoFio(FIO_SEMANA, x);
+    const y = 18;
     const acesa = d.acesas > 0;
     const forca = d.total ? d.acesas / d.total : 0;
     const atraso = entrando && movimento() !== 'parado' ? i * (movimento() === 'calmo' ? 60 : 110) : 0;
@@ -347,7 +313,7 @@ export function desenharSemana(entrando = false) {
       `<text x="15" y="66" class="${d.hoje ? 'hoje-rot' : ''}">${d.nome}</text>` +
       `<text x="15" y="80">${d.hoje ? 'hoje' : legenda}</text></g></g>`;
   });
-  const varal = el('div', { classe: 'varal', html: `<svg viewBox="0 0 360 140" role="group" aria-label="Varal da semana">${html}</svg>` });
+  const varal = el('div', { classe: 'varal', html: `<svg viewBox="0 0 360 140" role="group" aria-label="Sua semana">${html}</svg>` });
   varal.querySelectorAll('.pendente').forEach((g) => {
     const escolher = () => { diaEscolhido = g.dataset.iso; desenharSemana(false); const n = $('tela-semana').querySelector(`.pendente[data-iso="${diaEscolhido}"]`); if (n) reiniciar(n, 'balanca'); };
     g.addEventListener('click', escolher);
@@ -359,7 +325,7 @@ export function desenharSemana(entrando = false) {
   tela.replaceChildren(
     el('h1', { id: 'titulo-semana' }, 'Calendário'),
     trocaDoCalendario('semana'),
-    el('p', { classe: 'data' }, `Esta semana · ${intervalo}`),
+    el('p', { classe: 'data' }, `Sua semana · ${intervalo}`),
     varal,
     el('section', { classe: 'grupo cartao' },
       el('h2', {}, nomeDia[0].toUpperCase() + nomeDia.slice(1), el('span', { classe: 'n' }, String(doDia.length))),

@@ -85,26 +85,11 @@ export function agruparPorArea(tarefas, onde = (t) => t) {
   }).sort(ordemGrupo);
 }
 
-// ---------- O resumo no topo do Hoje (lote 36, ideia do Krivo) ----------
-// Quantas abertas há hoje, no resto da semana e mais para frente, e quantas foram feitas desde segunda.
-// A barra começa pelo feito: feitas ÷ (feitas + o que ainda está marcado para hoje e para o resto da semana).
-export function resumoDoTopo(tarefas, hoje) {
-  const domingo = somarDias(segundaDaSemana(hoje), 6);
-  const abertas = tarefas.filter((t) => t.estado === 'aberta' && t.dia);
-  const r = {
-    hoje: abertas.filter((t) => t.dia === hoje).length,
-    semana: abertas.filter((t) => t.dia > hoje && t.dia <= domingo).length,
-    depois: abertas.filter((t) => t.dia > domingo).length,
-    feitas: feitasNaSemana(tarefas, hoje),
-  };
-  const total = r.feitas + r.hoje + r.semana;
-  return { ...r, fracao: total ? r.feitas / total : 0 };
-}
-
 // ---------- O Hoje em caixas (pedido de Rafael, 28/10) ----------
-// Cada tarefa aparece numa caixa só. Em andamento e Aguardando outros valem para qualquer dia (são etiquetas,
-// como no Quadro: "em andamento" e qualquer uma que comece com "aguardando"); Prioridades, para a semana;
-// as partes do dia, para hoje. O que não cai em caixa fica nas seções de sempre (Amanhã, Próximos dias, Ficou para trás).
+// Cada tarefa aparece numa caixa só. Em andamento e Aguardando outros são etiquetas, como no Quadro ("em andamento" e
+// qualquer uma que comece com "aguardando"); Prioridades, para a semana; as partes do dia, para hoje.
+// Desde o lote 44 (Rafael: "Aqui no Hoje entram as tarefas que eu marquei para hoje"), Em andamento e Aguardando só
+// recebem as de hoje (e as da estrela). As de outros dias ficam em Todas, nos filtros; Amanhã e Próximos dias, no Calendário.
 export const CAIXAS_DO_HOJE = [
   ['prioridades', 'Prioridades da semana'], ['manha', 'Manhã'], ['almoco', 'Horário do almoço'], ['tarde', 'Tarde'],
   ['noite', 'Noite'], ['qualquer', 'A qualquer hora'], ['andamento', 'Em andamento'], ['aguardando', 'Aguardando outros'],
@@ -129,6 +114,7 @@ export function comSituacao(etiquetas, situacao) {
 
 // "secao" é a seção fixada ao carregar (secaoDe), para nada mudar de lugar sozinho.
 export function caixaDoHoje(t, secao) {
+  if (secao !== 'hoje' && secao !== 'prioridade') return null;
   if (t.estado === 'aberta') {
     const s = situacaoDe(t);
     if (s) return s;
@@ -149,8 +135,7 @@ export function mudancaParaCaixa(t, caixa, hoje) {
 
 // ---------- Os varais: cada lâmpada pendura no ponto do fio que fica na x dela (pedido da Lara, 28/10: "Lâmpadas fora da linha") ----------
 // O fio é feito de arcos de Bézier quadráticos [início, controle, fim]. A altura antiga vinha de um seno parecido com o fio,
-// e na quinta-feira a lâmpada ficava 22 pontos acima dele.
-export const FIO_SEMANA = [[[2, 18], [90, 74], [180, 40]], [[180, 40], [270, 6], [358, 18]]];   // "M2 18 Q90 74 180 40 T358 18"
+// e na quinta-feira a lâmpada ficava 22 pontos acima dele. Desde o lote 46, "Sua semana" é uma linha reta e não precisa disto.
 export const FIO_DIA = [[[0, 4], [160, 30], [320, 4]]];                                          // "M0 4 Q160 30 320 4"
 export function yNoFio(arcos, x) {
   const [p0, p1, p2] = arcos.find(([, , fim]) => x <= fim[0]) ?? arcos.at(-1);

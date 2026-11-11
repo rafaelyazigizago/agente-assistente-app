@@ -1,4 +1,4 @@
-// Centelha · o pet: a faísca no canto da tela que conversa (lote 15; opção A de Rafael, com o DeepSeek).
+// Centelha · o pet: o assistente, que se chama Centelha (29/10), no canto da tela; conversa (lote 15; opção A de Rafael, com o DeepSeek).
 // Clica nela (ou aperta C no notebook) e conversa por texto ou pelo "Falar". Nesta versão ela só responde:
 // criar, mover e concluir tarefas com "posso?" chega no lote 16; a voz dela, no 17.
 // A conversa fica só na memória desta aba (some ao recarregar). O cérebro é a função "agente" do Supabase.
@@ -43,7 +43,7 @@ function desenhar() {
     conversa.length ? conversa.map(balao)
       : el('p', { classe: 'ajuda' }, 'Pergunte sobre as suas tarefas. Eu leio as abertas que não são privadas; o diário e o "Travei" ficam só com você.'),
     esperando ? el('p', { classe: 'balao dela pensando' }, 'Pensando…') : null);
-  const texto = el('textarea', { id: 'pet-texto', rows: 2, placeholder: 'Escreva ou toque em Falar', 'aria-label': 'Mensagem para a Centelha' });
+  const texto = el('textarea', { id: 'pet-texto', rows: 2, placeholder: 'Escreva ou toque em Falar', 'aria-label': 'Mensagem para o Centelha' });
   texto.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(texto.value); } });
   const form = el('form', { classe: 'pet-escrever' }, texto,
     Reconhecer ? el('button', { type: 'button', classe: 'pilula', id: 'pet-falar', html: `${icone('microfone')}<span>Falar</span>`, onclick: () => falar(texto) }) : null,

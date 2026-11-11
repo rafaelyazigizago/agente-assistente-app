@@ -9,9 +9,15 @@ import { $, el, abrirFolha, fecharFolha, avisar, mostrarEstado, folhaAtual } fro
 import { reordenar } from './arrastar.js';
 import { escolherChama } from './chama.js';
 import { usavel } from './funcoes.js';
+import { modoMvpLigado } from './modo-mvp.js';
+import { PARTES_DO_HOJE, mudancaNoHoje } from './hoje-dia.js';
+import { diaLocal } from './data-local.js';
 
 let abrirTarefa = () => {};
 export const aoAbrirTarefaPelasAcoes = (f) => { abrirTarefa = f; };
+// Hoje do MVP (hoje.js liga): o Travei de uma tarefa, a parte em que ela está e o "dia organizado"
+let travei = () => {}, parteNoHoje = () => null, organizou = () => {};
+export const aoAcoesDoHoje = (f) => { ({ travei, parteNoHoje, organizou } = f); };
 
 const porId = (id) => estado.tarefas.find((t) => t.id === id);
 const plural = (n, um, varios) => (n === 1 ? um : varios);
@@ -65,6 +71,7 @@ function desenharBarra() {
 
 // ---------- Menu ⋯ de uma tarefa ----------
 export function abrirAcoes(t) {
+  if (modoMvpLigado()) { acoesDoHoje(t); return; }
   const feita = t.estado === 'feita';
   const item = (rotulo, fazer, extra = {}) => el('button', {
     type: 'button', classe: 'opcao inteira', 'data-mantem-aviso': true, ...extra,
@@ -77,7 +84,7 @@ export function abrirAcoes(t) {
     el('h2', { id: 'titulo-acoes', style: 'font-size:1.3rem' }, t.titulo),
     ...[
       ...grupo('agora', [
-        item(feita ? 'Reabrir (apagar a luz)' : 'Concluir (acender a luz)', () => alternarFeita(t)),
+        item(feita ? 'Reabrir' : 'Concluir', () => alternarFeita(t)),
         !feita && usavel('chama') ? item('Focar nesta tarefa (Chama)', () => depoisDeFechar(() => escolherChama(t))) : null,
         situacoes(t, item),
       ]),
@@ -100,6 +107,46 @@ export function abrirAcoes(t) {
         item('Abrir a tarefa', () => abrirTarefa(t)),
       ]),
     ].filter(Boolean)));
+  abrirFolha('folha-acoes');
+}
+
+// O ⋯ no modo MVP (protótipo v8 e FR-004, FR-017): Abrir a tarefa, Travei, Mudar a parte do dia (o mesmo que arrastar),
+// Subir/Descer, Para amanhã e Apagar (vai para a lixeira, com Desfazer; nada se apaga de vez).
+function acoesDoHoje(t) {
+  const feita = t.estado === 'feita';
+  const item = (rotulo, fazer, ajuda) => el('button', {
+    type: 'button', classe: 'opcao inteira', 'data-mantem-aviso': true,
+    onclick: () => { fecharFolha('folha-acoes'); fazer(); },
+  }, ajuda ? [rotulo, el('span', { classe: 'ajuda' }, ajuda)] : rotulo);
+  const parte = parteNoHoje(t);
+  $('folha-acoes').replaceChildren(el('div', { classe: 'miolo' },
+    el('div', { classe: 'alca' }),
+    el('h2', { id: 'titulo-acoes', style: 'font-size:1.3rem' }, t.titulo),
+    el('div', { classe: 'opcoes' }, [
+      item('Abrir a tarefa', () => abrirTarefa(t)),
+      !feita ? item('Travei', () => depoisDeFechar(() => travei(t)), 'Conte o que está acontecendo; o Assistente sugere um passo pequeno.') : null,
+      parte && !feita ? item('Mudar a parte do dia', () => depoisDeFechar(() => mudarParte(t, parte)), `Hoje: ${NOMES_PARTES[parte]}. O mesmo que arrastar.`) : null,
+      ...subirDescer(t, item),
+      !feita ? item('Para amanhã', () => moverPara(t, somarDias(diaLocal(), 1))) : null,
+      item('Apagar', () => mudar(t, { estado: 'cancelada' }, { mensagem: `Na lixeira · ${t.titulo}`, desfazer: { estado: t.estado } })),
+    ].filter(Boolean))));
+  abrirFolha('folha-acoes');
+}
+const NOMES_PARTES = Object.fromEntries(PARTES_DO_HOJE);
+function mudarParte(t, agora) {
+  $('folha-acoes').replaceChildren(el('div', { classe: 'miolo' },
+    el('div', { classe: 'alca' }),
+    el('h2', { id: 'titulo-acoes', style: 'font-size:1.3rem' }, 'Mudar a parte do dia'),
+    el('div', { classe: 'opcoes' }, PARTES_DO_HOJE.map(([c, nome]) => el('button', {
+      type: 'button', classe: 'opcao inteira', 'data-mantem-aviso': true, 'aria-current': c === agora ? 'true' : null,
+      onclick: async () => {
+        fecharFolha('folha-acoes');
+        if (c === agora) return;
+        const antes = { dia: t.dia ?? null, prioridade_semana: !!t.prioridade_semana, parte_do_dia: t.parte_do_dia ?? null };
+        const ok = await mudar(t, mudancaNoHoje(c, diaLocal()), { mensagem: `${t.titulo} → ${nome}`, desfazer: antes });
+        if (ok) { estado.agoraId = null; redesenhar(); organizou(); }
+      },
+    }, c === agora ? [nome, el('span', { classe: 'ajuda' }, 'agora')] : nome)))));
   abrirFolha('folha-acoes');
 }
 

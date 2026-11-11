@@ -7,8 +7,9 @@
   <meta name="description" content="Tarefas, ideias e segundo cérebro de Rafael Yazigi.">
   <meta name="theme-color" content="#F8F5EE">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icones/icone-192.png">
-  <link rel="apple-touch-icon" href="icones/icone-192.png">
+  <link rel="icon" href="icones/icone.svg" type="image/svg+xml">
+  <link rel="icon" href="icones/icone-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icones/icone-apple-180.png">
   <link rel="preload" href="fontes/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fontes/bricolage-grotesque-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="estilo.css">
@@ -44,6 +45,8 @@
     <defs>
       <radialGradient id="g-brilho"><stop offset="0" stop-color="currentColor" stop-opacity=".9"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
       <symbol id="i-faisca" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5c.5 4.6 2.1 7.6 4.2 9.3 1.5 1.2 3.6 1.7 6.3 1.2-2.7.5-4.8 1.3-6.3 2.8-1.9 2-3.4 5-4.2 7.7-.8-2.7-2.3-5.7-4.2-7.7-1.5-1.5-3.6-2.3-6.3-2.8 2.7.5 4.8 0 6.3-1.2 2.1-1.7 3.7-4.7 4.2-9.3z"/></symbol>
+      <!-- o logo (lote 45): a versão pequena de docs/design/logo/, embutida para não depender de arquivo -->
+      <symbol id="i-logo" viewBox="0 0 1024 1024"><rect width="1024" height="1024" rx="232" fill="#14213D"/><g transform="translate(512 516) scale(1.27) translate(-512.5 -467.5)"><circle cx="375" cy="279" r="71.5" fill="#F5B841"/><path d="M678.8,160.2 L695.2,241.3 L768.6,203.0 L722.9,272.0 L801.8,296.8 L720.7,313.2 L759.0,386.6 L690.0,340.9 L665.2,419.8 L648.8,338.7 L575.4,377.0 L621.1,308.0 L542.2,283.2 L623.3,266.8 L585.0,193.4 L654.0,239.1 Z" fill="#F47A5F"/><path d="M395.0,393.0 C401.3,392.2 407.7,392.0 414.0,392.0 C420.7,392.0 427.3,392.4 434.0,393.0 C439.4,393.4 444.7,394.2 450.0,395.0 C451.4,395.2 452.7,395.7 454.0,396.0 C454.0,396.7 454.0,397.3 454.0,398.0 C441.3,399.7 428.5,400.6 416.0,403.0 C406.2,404.9 396.5,407.9 387.0,411.0 C383.2,412.2 379.6,414.1 376.0,416.0 C372.6,417.8 369.2,419.8 366.0,422.0 C363.2,423.8 360.4,425.7 358.0,428.0 C355.7,430.1 353.7,432.4 352.0,435.0 C349.7,438.5 347.4,442.1 346.0,446.0 C344.7,449.5 344.2,453.3 344.0,457.0 C343.9,459.4 344.4,461.7 345.0,464.0 C346.7,470.1 349.3,475.9 351.0,482.0 C352.0,485.6 352.9,489.3 353.0,493.0 C353.2,497.7 352.7,502.4 352.0,507.0 C351.4,510.8 350.5,514.5 349.0,518.0 C347.2,522.2 344.8,526.3 342.0,530.0 C339.1,533.7 335.7,537.1 332.0,540.0 C327.7,543.4 322.9,546.4 318.0,549.0 C308.9,553.8 299.1,557.2 290.0,562.0 C287.1,563.6 284.4,565.6 282.0,568.0 C279.6,570.4 277.7,573.1 276.0,576.0 C274.7,578.2 273.6,580.5 273.0,583.0 C272.2,586.3 271.8,589.7 272.0,593.0 C272.2,596.4 273.1,599.7 274.0,603.0 C275.7,609.1 278.4,614.9 280.0,621.0 C280.8,623.9 281.1,627.0 281.0,630.0 C280.8,634.1 280.1,638.1 279.0,642.0 C277.7,646.5 276.1,650.8 274.0,655.0 C272.1,658.9 269.6,662.5 267.0,666.0 C264.3,669.6 261.3,673.0 258.0,676.0 C255.0,678.7 251.4,680.8 248.0,683.0 C245.1,684.8 242.1,686.6 239.0,688.0 C234.8,689.9 230.5,691.8 226.0,693.0 C223.1,693.8 220.0,694.3 217.0,694.0 C215.8,693.9 215.0,692.7 214.0,692.0 C214.3,691.0 214.5,689.9 215.0,689.0 C217.2,685.2 219.8,681.8 222.0,678.0 C223.8,674.8 225.7,671.5 227.0,668.0 C228.4,664.1 229.4,660.1 230.0,656.0 C230.4,653.4 230.3,650.7 230.0,648.0 C229.6,644.6 229.1,641.2 228.0,638.0 C227.1,635.2 225.5,632.6 224.0,630.0 C222.8,627.9 221.5,625.9 220.0,624.0 C214.2,616.9 207.4,610.5 202.0,603.0 C199.6,599.7 198.2,595.9 197.0,592.0 C196.1,589.1 196.0,586.0 196.0,583.0 C196.0,579.3 196.2,575.6 197.0,572.0 C198.2,566.9 199.6,561.7 202.0,557.0 C204.4,552.3 207.5,548.0 211.0,544.0 C214.6,539.9 218.7,536.3 223.0,533.0 C226.1,530.6 229.5,528.8 233.0,527.0 C241.9,522.4 251.1,518.6 260.0,514.0 C262.1,512.9 264.2,511.5 266.0,510.0 C268.2,508.2 270.3,506.2 272.0,504.0 C273.6,501.9 274.9,499.5 276.0,497.0 C277.0,494.8 277.8,492.4 278.0,490.0 C278.8,482.0 278.1,474.0 279.0,466.0 C279.5,461.9 280.4,457.8 282.0,454.0 C284.1,448.8 286.7,443.6 290.0,439.0 C293.7,433.8 298.1,429.1 303.0,425.0 C308.5,420.4 314.7,416.4 321.0,413.0 C327.7,409.4 334.8,406.5 342.0,404.0 C349.2,401.5 356.6,399.5 364.0,398.0 C374.2,395.9 384.6,394.2 395.0,393.0 Z" fill="#B7A2F2"/><path d="M779.0,484.0 C783.9,483.2 789.0,483.6 794.0,484.0 C796.7,484.2 799.4,485.1 802.0,486.0 C804.1,486.8 806.2,487.7 808.0,489.0 C810.5,490.7 812.8,492.8 815.0,495.0 C816.8,496.8 818.6,498.8 820.0,501.0 C821.9,503.9 823.5,506.9 825.0,510.0 C825.9,511.9 826.5,514.0 827.0,516.0 C827.8,519.0 828.8,521.9 829.0,525.0 C829.2,528.7 828.7,532.4 828.0,536.0 C827.0,540.8 826.0,545.6 824.0,550.0 C821.6,555.3 818.7,560.5 815.0,565.0 C811.3,569.6 806.8,573.6 802.0,577.0 C795.8,581.4 788.9,584.8 782.0,588.0 C772.9,592.2 763.5,595.8 754.0,599.0 C744.8,602.1 735.4,604.6 726.0,607.0 C716.7,609.3 707.4,611.3 698.0,613.0 C688.7,614.7 679.4,616.0 670.0,617.0 C660.4,618.0 650.7,618.8 641.0,619.0 C630.3,619.2 619.6,618.8 609.0,618.0 C601.9,617.5 594.9,616.3 588.0,615.0 C582.6,614.0 577.3,612.6 572.0,611.0 C567.6,609.6 563.2,608.0 559.0,606.0 C553.9,603.6 549.0,600.8 544.0,598.0 C542.9,597.4 542.0,596.7 541.0,596.0 C541.7,595.7 542.3,595.3 543.0,595.0 C542.7,594.7 542.3,594.3 542.0,594.0 C551.3,595.7 560.6,597.7 570.0,599.0 C575.0,599.7 580.0,600.0 585.0,600.0 C590.3,600.0 595.7,599.5 601.0,599.0 C605.7,598.5 610.4,597.9 615.0,597.0 C620.4,595.9 625.8,594.7 631.0,593.0 C640.8,589.7 650.6,586.3 660.0,582.0 C668.0,578.3 675.6,573.8 683.0,569.0 C690.0,564.5 696.8,559.5 703.0,554.0 C708.1,549.5 712.6,544.2 717.0,539.0 C726.3,527.9 734.6,516.0 744.0,505.0 C746.6,502.0 749.8,499.4 753.0,497.0 C756.8,494.1 760.7,491.1 765.0,489.0 C769.4,486.8 774.1,484.8 779.0,484.0 Z" fill="#9FDCCB"/><path d="M457.0,578.0 C457.3,578.0 457.7,577.8 458.0,578.0 C458.8,578.5 459.6,579.2 460.0,580.0 C464.6,588.5 468.2,597.6 473.0,606.0 C477.2,613.3 482.0,620.3 487.0,627.0 C492.0,633.6 497.3,640.0 503.0,646.0 C508.3,651.7 514.1,657.0 520.0,662.0 C525.4,666.6 531.1,670.9 537.0,675.0 C543.2,679.3 549.4,683.4 556.0,687.0 C563.5,691.1 571.2,694.7 579.0,698.0 C589.2,702.3 599.8,705.6 610.0,710.0 C612.9,711.3 615.6,713.0 618.0,715.0 C620.9,717.4 623.7,720.0 626.0,723.0 C629.1,727.0 631.8,731.4 634.0,736.0 C635.2,738.5 635.5,741.3 636.0,744.0 C636.5,746.3 637.2,748.7 637.0,751.0 C636.6,755.1 635.7,759.3 634.0,763.0 C632.0,767.4 629.3,771.5 626.0,775.0 C623.5,777.6 620.3,779.5 617.0,781.0 C613.9,782.5 610.5,783.5 607.0,784.0 C602.7,784.6 598.3,784.5 594.0,784.0 C589.9,783.5 585.9,782.4 582.0,781.0 C577.5,779.4 573.2,777.3 569.0,775.0 C565.5,773.0 562.1,770.6 559.0,768.0 C554.8,764.6 550.8,760.8 547.0,757.0 C542.5,752.5 538.1,747.9 534.0,743.0 C527.7,735.5 521.8,727.8 516.0,720.0 C511.4,713.8 507.0,707.6 503.0,701.0 C494.3,686.6 485.8,672.0 478.0,657.0 C474.1,649.6 471.0,641.8 468.0,634.0 C464.6,625.1 461.5,616.2 459.0,607.0 C457.1,600.1 456.1,593.0 455.0,586.0 C454.7,584.4 454.6,582.6 455.0,581.0 C455.3,579.8 456.3,579.0 457.0,578.0 Z" fill="#FBEAD3"/><circle cx="510.5" cy="504" r="44" fill="#F5B841"/></g></symbol>
       <symbol id="i-hoje" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
       <symbol id="i-semana" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 6c4 3 6 3 10 3s6 0 10-3"/><circle cx="6" cy="11.5" r="2.2" fill="currentColor"/><circle cx="12" cy="13" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="11.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
       <symbol id="i-caixa" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3 13l2.5-8h13L21 13v6H3z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol>
@@ -70,10 +73,10 @@
   <nav class="menu-lateral" id="menu-lateral" aria-label="Listas"></nav>
 
   <header class="topo">
-    <p class="marca"><svg class="faisca" aria-hidden="true"><use href="#i-faisca"/></svg>Centelha</p>
+    <p class="marca"><svg class="marca-logo" aria-hidden="true"><use href="#i-logo"/></svg>Centelha</p>
     <span id="estado" class="estado" role="status" aria-live="polite"></span>
     <button class="icone-btn" id="ouvir-tela" type="button" aria-label="Ouvir esta tela" hidden><svg><use href="#i-ouvir"/></svg></button>
-    <button class="icone-btn" id="abrir-ajustes" type="button" aria-label="Do seu jeito: tema, cor, letra e movimento"><svg><use href="#i-engrenagem"/></svg></button>
+    <button class="icone-btn" id="abrir-ajustes" type="button" aria-label="Ajustes: tema, cor, letra e movimento"><svg><use href="#i-engrenagem"/></svg></button>
   </header>
 
   <main id="principal">
@@ -91,6 +94,7 @@
     <section id="tela-lista" class="tela" hidden aria-labelledby="titulo-lista"></section>
     <section id="tela-diario" class="tela" hidden aria-labelledby="titulo-diario"></section>
     <section id="tela-tarefa" class="tela" hidden aria-label="Tarefa"></section>
+    <section id="tela-travei" class="tela travei-conversa" hidden aria-labelledby="titulo-travei"></section>
   </main>
 
   <nav class="abas" id="abas" aria-label="Telas" hidden>
@@ -114,7 +118,8 @@
   <div class="folha" id="folha-ajustes" role="dialog" aria-modal="true" aria-labelledby="titulo-ajustes" hidden>
     <div class="miolo ajuste">
       <div class="alca"></div>
-      <h2 id="titulo-ajustes" style="font-size:1.7rem">Do seu jeito</h2>
+      <h2 id="titulo-ajustes" style="font-size:1.7rem">Ajustes</h2>
+      <p class="ajuda" style="margin-top:-4px">O Centelha do seu jeito.</p>
       <h3>Movimento</h3>
       <div class="segmento" id="seg-movimento"><span class="marcador"></span>
         <button type="button" data-v="vivo">Vivo</button><button type="button" data-v="calmo">Calmo</button><button type="button" data-v="parado">Parado</button></div>
@@ -123,15 +128,16 @@
       <div class="segmento" id="seg-tema"><span class="marcador"></span>
         <button type="button" data-v="claro">Claro</button><button type="button" data-v="escuro">Escuro</button><button type="button" data-v="auto">Automático</button></div>
       <p class="ajuda">Automático: claro de dia, escuro à noite.</p>
-      <h3>Cor da sua luz</h3>
+      <h3>Cor de destaque</h3>
       <div class="cores" id="cores"></div>
       <h3>Letra do texto</h3>
       <div class="segmento" id="seg-letra"><span class="marcador"></span>
         <button type="button" data-v="atkinson">Atkinson</button><button type="button" data-v="lexend" style="font-family:Lexend,system-ui">Lexend</button><button type="button" data-v="aparelho" style="font-family:system-ui">Do aparelho</button></div>
       <div class="campo"><label for="tamanho"><span>Tamanho da letra</span></label><input id="tamanho" type="range" min="90" max="130" step="5" value="100"></div>
-      <label class="chave" for="vibrar"><span>Vibrar ao acender (só Android)</span><input id="vibrar" type="checkbox"></label>
+      <label class="chave" for="vibrar"><span>Vibrar ao concluir (só Android)</span><input id="vibrar" type="checkbox"></label>
       <h3>Funções que você usa</h3>
       <p class="ajuda">O básico vem sempre. O resto você liga aqui, quando quiser. Desligar só esconde da tela: nada se apaga.</p>
+      <label class="chave funcao" for="modo-mvp"><span><strong>Modo MVP</strong><span class="ajuda">Só o Hoje e o Travei. Desligue para ver o app inteiro.</span></span><input id="modo-mvp" type="checkbox" checked></label>
       <div id="funcoes"></div>
       <h3>Seus dados</h3>
       <button class="btn claro grande" id="exportar" type="button">Exportar tudo (arquivo)</button>
@@ -148,7 +154,7 @@
   <div class="folha" id="folha-visual" role="dialog" aria-modal="true" aria-labelledby="titulo-visual" hidden></div>
   <section class="chama" id="chama" role="dialog" aria-modal="true" aria-labelledby="ch-titulo" hidden></section>
 
-  <button class="pet" id="pet" type="button" aria-label="Conversar com a Centelha" hidden><svg class="faisca" aria-hidden="true"><use href="#i-faisca"/></svg></button>
+  <button class="pet" id="pet" type="button" aria-label="Conversar com o Centelha" hidden><svg class="faisca" aria-hidden="true"><use href="#i-faisca"/></svg></button>
   <div class="folha" id="folha-conversa" role="dialog" aria-modal="true" aria-labelledby="titulo-conversa" hidden></div>
 </body>
 </html>

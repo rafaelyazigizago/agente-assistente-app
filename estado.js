@@ -24,6 +24,7 @@ export const estado = {
   lista: null,         // a lista aberta (subgrupo, área ou Prioridades)
   selecionando: false, // modo de escolher várias tarefas
   segurando: false,    // no celular, o dedo segurando um cartão (pode virar arrasto)
+  agoraId: null,      // Hoje do MVP: a tarefa que Rafael tocou (destaque + Travei); não é gravada
   painel: null,        // no notebook: id da tarefa aberta no painel da direita
   carregadoEm: 0,
 };
@@ -79,7 +80,7 @@ export function alternarFeita(t, botao) {
       return mudar(t, { estado: 'feita', feita_em: new Date().toISOString() }).then(async (ok) => {
         if (!ok) return false;
         const nova = await criarProximaVez(t);
-        avisar(`Acesa · ${t.titulo}${nova ? ` · volta ${rotuloDia(nova.dia).toLowerCase()}` : ''}`, async () => {
+        avisar(`Feita · ${t.titulo}${nova ? ` · volta ${rotuloDia(nova.dia).toLowerCase()}` : ''}`, async () => {
           await cancelarProxima(t);
           mudar(t, { estado: 'aberta', feita_em: null, feita_por: null }, { mensagem: 'Desfeito' });
         });
@@ -87,10 +88,10 @@ export function alternarFeita(t, botao) {
       });
     }
     return mudar(t, { estado: 'feita', feita_em: new Date().toISOString() }, {
-      mensagem: `Acesa · ${t.titulo}`, desfazer: { estado: 'aberta', feita_em: null, feita_por: null },
+      mensagem: `Feita · ${t.titulo}`, desfazer: { estado: 'aberta', feita_em: null, feita_por: null },
     });
   }
-  return mudar(t, { estado: 'aberta', feita_em: null, feita_por: null }, { mensagem: `Apagada · ${t.titulo}` });
+  return mudar(t, { estado: 'aberta', feita_em: null, feita_por: null }, { mensagem: `Reaberta · ${t.titulo}` });
 }
 
 // Em andamento e Aguardando outros (caixas do Hoje): uma etiqueta, como no Quadro. A tarefa vai para a caixa na hora.

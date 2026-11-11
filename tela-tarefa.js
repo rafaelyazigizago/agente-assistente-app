@@ -1,4 +1,4 @@
-// Centelha · a tarefa aberta, o "Travei" e o momento "Acesa!".
+// Centelha · a tarefa aberta, o botão "Travei" (a conversa mora em travei.js) e o momento "Feita!".
 // Aqui cada campo salva sozinho ao sair dele (ou depois de um respiro sem digitar), sem redesenhar a tela.
 import { rotuloDia, somarDias } from './datas.js';
 import { lampadasDoDia, feitasNaSemana, temMarca, comMarca, diaLocal, REPETICOES, duracaoTexto, etiquetasLivres, comEtiqueta, mesmoNome } from './calculos.js';
@@ -6,36 +6,18 @@ import { estado, mudar, falha, criarProximaVez, cancelarProxima } from './estado
 import { dobra } from './telas.js';
 import { escolherChama } from './chama.js';
 import { usavel } from './funcoes.js';
+import { modoMvpLigado } from './modo-mvp.js';
 import { cadastroDe, corDe, sugestoes, garantirCadastro, abrirCadastroEtiquetas } from './etiquetas.js';
 import * as dados from './dados.js';
-import { $, el, icone, lampada, abrirFolha, fecharFolha, mostrarEstado, avisar, contar, movimento, reiniciar, fagulhas, vibrar } from './ui.js';
+import { abrirTravei as abrirConversaTravei } from './travei.js';
+import { $, el, icone, caixinha, mostrarEstado, avisar, contar, movimento, reiniciar, fagulhas, vibrar } from './ui.js';
 
 const LENTES = [['dinheiro', 'Traz renda'], ['tempo', 'Libera tempo'], ['amor', 'Quem eu amo']];   // "Traz renda" e "Libera tempo": nomes novos (28/10; o 2º para não confundir com "Quanto tempo deve levar")
 const PARTES = [['manha', 'manhã'], ['almoco', 'almoço'], ['tarde', 'tarde'], ['noite', 'noite']];
-const MOTIVOS = [['falta_informacao', 'Falta informação'], ['depende_de_alguem', 'Depende de alguém'], ['grande_demais', 'Grande demais'],
-  ['chata', 'Chata'], ['medo_de_errar', 'Medo de errar']];
-// Saída → [nome, o que fazer, força da prova]. A prova vem da proposta (seções 3.15 e EN2); sem fonte, sem selo.
-const SAIDAS = {
-  passo_de_2_minutos: ['Passo de 2 minutos', 'Escreva o menor pedaço, que caiba em 2 minutos, como o primeiro passo.', 'nenhuma: é só um jeito de começar'],
-  quebrar: ['Quebrar em passos', 'Divida em 3 passos pequenos. Escreva o primeiro agora.', null],
-  perguntar: ['Perguntar a alguém', 'Escreva a pergunta e para quem, no "Próximo passo".', null],
-  rever_pensamento: ['Rever o pensamento', 'O que você acha que vai dar errado? É fato ou é medo? O que você diria a um amigo agora?', 'moderada'],
-  isto_depende_de_mim: ['Isto depende de mim?', 'Separe em dois: o que depende de você vira o próximo passo; o que não depende, anote de quem depende.', 'fraca'],
-  pular_subtarefa: ['Pular este passo', 'Deixe este passo para depois e siga no próximo. Ele continua aqui.', null],
-};
-const SUGESTAO = {
-  medo_de_errar: 'Para medo de errar, experimente "Rever o pensamento".',
-  grande_demais: 'Para o que é grande demais, experimente "Passo de 2 minutos" ou "Quebrar em passos".',
-  falta_informacao: 'Experimente "Perguntar a alguém".',
-  depende_de_alguem: 'Experimente "Perguntar a alguém" ou "Isto depende de mim?".',
-  chata: 'Experimente o "Passo de 2 minutos": só começar.',
-};
-
 let t = null;            // a tarefa aberta
 let passos = null;       // os passos dela (null = carregando)
 let conversa = null;     // os comentários e os arquivos dela (null = carregando)
 let passoRecem = null;
-let rascunhoTravei = null;
 let voltar = () => {};
 let nomeVolta = 'Hoje';
 let noPainel = false;   // no notebook, a tarefa abre no painel da direita (como no Microsoft To Do)
@@ -106,6 +88,8 @@ function desenharTarefa() {
   $('tela-tarefa').replaceChildren(...[   // o que não existe (null) fica de fora, senão aparece escrito "null"
     el('button', { type: 'button', classe: 'voltar', onclick: () => voltar() }, noPainel ? '✕ Fechar' : `‹ ${nomeVolta}`),
     tituloEditavel(),
+    // Modo MVP: o Travei no topo, logo abaixo do título (FR-004)
+    modoMvpLigado() && t.estado === 'aberta' ? el('div', { classe: 'travei-topo' }, el('button', { type: 'button', classe: 'btn principal grande', onclick: () => abrirTravei() }, 'Travei')) : null,
     // Fazer: quando, onde parei, o próximo passo, os passos e o foco
     tituloDoBloco('Fazer', 'bloco-fazer'),
     linhaQuando(),
@@ -133,7 +117,7 @@ function desenharTarefa() {
       usavel('tempo') ? linhaTempo() : null,
       usavel('tempo') ? linhaEnergia() : null,
       el('p', { classe: 'rotulo' }, 'como saber que acabou'),
-      campoTexto('pronto_quando', 'Pronto quando', { dica: 'como você vai saber que acabou' }),
+      campoTexto('pronto_quando', 'Está pronta quando…', { dica: 'como você vai saber que acabou' }),
       campoTexto('notas', 'Notas', { linhas: 4 }),
     ]),
     acoes(),
@@ -322,7 +306,7 @@ function linhaGrupo() {
   };
   return el('div', { classe: 'bloco', style: 'margin-top:0' },
     campo('area', 'Grupo (área)', 'areas', 'ex.: Soluções'),
-    campo('subgrupo', 'Subgrupo', 'subgrupos', 'ex.: CONSERTOS'),
+    campo('subgrupo', 'Lista', 'subgrupos', 'ex.: CONSERTOS'),
     el('datalist', { id: 'areas' }, areas.map((a) => el('option', { value: a }))),
     listaSub);
 }
@@ -481,8 +465,8 @@ function redesenharPassos(entrou) {
   lista.replaceChildren(...passos.map((p) => el('div', {
     classe: ['tarefa', p.feita && 'feita', p.id === passoRecem && 'recem', p.id === entrou && 'entrou'].filter(Boolean).join(' '),
   },
-  el('button', { type: 'button', classe: 'botao-lamp', 'aria-pressed': String(p.feita), 'aria-label': `${p.feita ? 'Feito' : 'Marcar como feito'}: ${p.texto}`,
-    html: lampada(p.feita), onclick: (e) => alternarPasso(p, e.currentTarget) }),
+  el('button', { type: 'button', classe: 'botao-lamp', 'aria-pressed': String(p.feita), 'aria-label': `Concluir o passo: ${p.texto}`,
+    html: caixinha(p.feita), onclick: (e) => alternarPasso(p, e.currentTarget) }),
   el('span', { classe: 'texto' }, el('span', { classe: 'titulo-t' }, p.texto)),
   el('button', { type: 'button', classe: 'icone-btn', 'aria-label': `Tirar o passo: ${p.texto}`, 'data-mantem-aviso': true, onclick: () => tirarPasso(p) }, '×'))));
   passoRecem = null;
@@ -516,7 +500,7 @@ async function tirarPasso(p) {
   } catch (erro) { if (t === alvo) { passos.push(p); passos.sort((a, b) => a.ordem - b.ordem); redesenharPassos(); } falha(erro); }
 }
 
-// ---------- A meta que ela acende ----------
+// ---------- A meta em que ela ajuda ----------
 function cartaoMeta() {
   const alvo = t;
   const metas = [...new Set(estado.tarefas.map((x) => x.resultado_meta).filter(Boolean))].sort();
@@ -529,9 +513,9 @@ function cartaoMeta() {
   });
   return el('section', { classe: 'cartao bloco' },
     el('div', { classe: 'campo' },
-      el('label', { for: 'campo-meta' }, el('span', {}, 'Acende a meta'), el('span', {}, 'opcional')),
+      el('label', { for: 'campo-meta' }, el('span', {}, 'Ajuda na meta:'), el('span', {}, 'opcional')),
       campo, lista),
-    el('p', { classe: 'ajuda' }, 'Quando ficar feita, a luz desta tarefa sobe até a meta.'));
+    el('p', { classe: 'ajuda' }, 'Quando esta tarefa ficar feita, ela conta para esta meta.'));
 }
 
 // ---------- Travei / Feita ----------
@@ -539,11 +523,11 @@ function acoes() {
   const feita = t.estado === 'feita';
   if (feita) {
     return el('div', { classe: 'acoes-fixas', id: 'tarefa-acoes' },
-      el('button', { type: 'button', classe: 'btn claro grande', style: 'grid-column:1/-1', 'data-mantem-aviso': true, onclick: apagar }, 'Apagar a luz (reabrir)'));
+      el('button', { type: 'button', classe: 'btn claro grande', style: 'grid-column:1/-1', 'data-mantem-aviso': true, onclick: apagar }, 'Reabrir'));
   }
   return el('div', { classe: 'acoes-fixas', id: 'tarefa-acoes' },
-    el('button', { type: 'button', classe: 'btn claro grande', onclick: abrirTravei }, 'Travei'),
-    el('button', { type: 'button', classe: 'btn grande', onclick: acender }, 'Feita'));
+    modoMvpLigado() ? null : el('button', { type: 'button', classe: 'btn claro grande', onclick: () => abrirTravei() }, 'Travei'),
+    el('button', { type: 'button', classe: 'btn grande', style: modoMvpLigado() ? 'grid-column:1/-1' : null, onclick: acender }, 'Concluir'));
 }
 
 function acender(e) {
@@ -557,79 +541,15 @@ function acender(e) {
 }
 
 function apagar() {
-  mudar(t, { estado: 'aberta', feita_em: null, feita_por: null }, { mensagem: `Apagada · ${t.titulo}` });
+  mudar(t, { estado: 'aberta', feita_em: null, feita_por: null }, { mensagem: `Reaberta · ${t.titulo}` });
 }
 
 // ---------- Travei ----------
-function abrirTravei() {
-  const alvo = t;
-  const r = rascunhoTravei && rascunhoTravei.id === alvo.id ? rascunhoTravei : null;
-  const escolha = { motivo: r?.motivo || null, saida: r?.saida || null };
-  const sinto = el('textarea', { id: 'travei-sinto', rows: 2, placeholder: 'em poucas palavras' });
-  sinto.value = r?.sinto || '';
-  const dica = el('p', { classe: 'ajuda', 'aria-live': 'polite' });
+// O Travei é a conversa de app/travei.js (T023), da tela da tarefa ou do Hoje do MVP (a tarefa em destaque e o ⋯).
+export const abrirTraveiDe = (alvo) => abrirConversaTravei(alvo);
+const abrirTravei = () => abrirConversaTravei(t);
 
-  const grupo = (tipo, itens, classe) => {
-    const caixa = el('div', { classe, role: 'group', 'aria-label': tipo === 'motivo' ? 'O que pegou' : 'Saídas' });
-    caixa.append(...itens.map(([v, rotulo], i) => el('button', {
-      type: 'button', 'data-v': v, 'aria-pressed': String(escolha[tipo] === v),
-      classe: tipo === 'motivo' ? 'opcao' + (i === itens.length - 1 ? ' inteira' : '') : 'pilula',
-      onclick: (e) => {
-        const ja = escolha[tipo] === v;
-        escolha[tipo] = ja ? null : v;
-        caixa.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(!ja && b.dataset.v === v)));
-        if (!ja) reiniciar(e.currentTarget, 'pop');
-        mostrarDica();
-      },
-    }, rotulo)));
-    return caixa;
-  };
-  const mostrarDica = () => {
-    if (escolha.saida) {
-      const [, texto, prova] = SAIDAS[escolha.saida];
-      dica.replaceChildren(texto, prova ? el('span', { style: 'display:block;margin-top:4px' }, `Força da prova: ${prova}.`) : '');
-    } else dica.textContent = SUGESTAO[escolha.motivo] || '';
-  };
-  mostrarDica();
-
-  $('folha-travei').replaceChildren(el('div', { classe: 'miolo' },
-    el('div', { classe: 'alca' }),
-    el('div', { classe: 'respira', 'aria-hidden': 'true', html: `<span class="anel"></span><span class="anel"></span>${icone('faisca', 'faisca')}` }),
-    el('div', { classe: 'centro' }, el('h2', { id: 'titulo-travei', style: 'font-size:1.7rem;justify-content:center' }, 'Tudo bem travar.'), el('p', { classe: 'data' }, 'O que pegou?')),
-    grupo('motivo', MOTIVOS, 'opcoes'),
-    el('div', { classe: 'campo' },
-      el('label', { for: 'travei-sinto' }, el('span', {}, 'O que aconteceu / o que estou sentindo'), el('span', { html: `${icone('cadeado')} só você vê`, classe: 'so-voce' })),
-      sinto),
-    el('p', { classe: 'rotulo' }, 'saídas'),
-    grupo('saida', Object.entries(SAIDAS).map(([v, [rotulo]]) => [v, rotulo]), 'fileira'),
-    dica,
-    el('button', { type: 'button', classe: 'btn grande', onclick: () => fecharFolha('folha-travei') }, 'Seguir'),
-  ));
-  abrirFolha('folha-travei', () => guardarTravada(alvo, escolha, sinto.value.trim()));
-}
-
-async function guardarTravada(alvo, escolha, sinto) {
-  if (t === alvo) {
-    const foco = escolha.saida === 'passo_de_2_minutos' || escolha.saida === 'quebrar' ? $('novo-passo')
-      : escolha.saida === 'perguntar' || escolha.saida === 'isto_depende_de_mim' ? $('campo-proximo_passo') : null;
-    if (foco && escolha.saida === 'passo_de_2_minutos') foco.placeholder = 'O passo de 2 minutos';
-    if (foco && escolha.saida === 'quebrar') foco.placeholder = 'O primeiro dos 3 passos';
-    if (foco) setTimeout(() => { foco.scrollIntoView({ block: 'center', behavior: movimento() === 'vivo' ? 'smooth' : 'auto' }); foco.focus({ preventScroll: true }); }, 440);
-  }
-  if (!escolha.motivo && !escolha.saida && !sinto) return;
-  mostrarEstado('Salvando…');
-  try {
-    await dados.registrarTravada({ tarefa_id: alvo.id, motivo: escolha.motivo, saida: escolha.saida, o_que_sinto: sinto || null });
-    rascunhoTravei = null;
-    mostrarEstado('Salvo ✓');
-    avisar('Travada guardada · só você vê');
-  } catch (erro) {
-    rascunhoTravei = { id: alvo.id, ...escolha, sinto };   // abre de novo já preenchido
-    falha(erro);
-  }
-}
-
-// ---------- "Acesa!" ----------
+// ---------- "Feita!" (era "Acesa!" até o lote 45) ----------
 let momentoDe = null;
 export const momentoAberto = () => !$('momento').hidden;
 
@@ -644,10 +564,11 @@ const CENA = `<svg class="cena" viewBox="0 0 320 300" aria-hidden="true">
     <path d="M14 0a10 10 0 0 0-5.6 18.3c1.1.9 1.7 2 1.7 3.3V24h7.8v-2.4c0-1.3.6-2.4 1.7-3.3A10 10 0 0 0 14 0z" fill="var(--luz)"/>
   </g></svg>`;
 
-function campoMomento(id, rotulo, valor, extra = {}) {
+// semOpcional: o rótulo já diz "(se quiser)", e o "opcional" ao lado repetiria
+function campoMomento(id, rotulo, valor, { semOpcional, ...extra } = {}) {
   const campo = el('input', { id, type: 'text', autocomplete: 'off', ...extra });
   campo.value = valor || '';
-  return el('div', { classe: 'campo' }, el('label', { for: id }, el('span', {}, rotulo), el('span', {}, 'opcional')), campo);
+  return el('div', { classe: 'campo' }, el('label', { for: id }, el('span', {}, rotulo), semOpcional ? null : el('span', {}, 'opcional')), campo);
 }
 
 function abrirMomento(alvo) {
@@ -658,14 +579,14 @@ function abrirMomento(alvo) {
   const bHoje = el('b', {}, String(Math.max(0, nHoje - 1)));
   const bSemana = el('b', {}, String(Math.max(0, nSemana - 1)));
   m.replaceChildren(el('div', { classe: 'miolo' },
-    el('span', { classe: 'meta-rotulo' }, alvo.resultado_meta ? `Meta: ${alvo.resultado_meta}` : 'Mais uma luz acesa'),
+    el('span', { classe: 'meta-rotulo' }, alvo.resultado_meta ? `Meta: ${alvo.resultado_meta}` : 'Mais uma feita'),
     el('div', { html: CENA, style: 'width:100%;display:flex;justify-content:center' }),
-    el('p', { classe: 'acesa-palavra', id: 'momento-palavra' }, 'Acesa!'),
+    el('p', { classe: 'acesa-palavra', id: 'momento-palavra' }, 'Feita!'),
     el('p', { style: 'margin:0;text-align:center' }, alvo.titulo),
     el('div', { classe: 'numeros' }, el('div', {}, bHoje, 'hoje'), el('div', {}, bSemana, 'nesta semana')),
     campoMomento('m-efeito', 'Qual foi o efeito?', alvo.resultado_efeito, { placeholder: 'em 1 linha' }),
-    campoMomento('m-prova', 'Prova (link de foto, print ou arquivo)', alvo.prova_url, { inputmode: 'url', placeholder: 'https://…' }),
-    alvo.resultado_meta ? null : campoMomento('m-meta', 'Que meta ela acende?', '', { list: 'metas', placeholder: 'ex.: organizar as finanças da casa' }),
+    campoMomento('m-prova', 'Foto ou link do que ficou pronto (se quiser)', alvo.prova_url, { inputmode: 'url', placeholder: 'https://…', semOpcional: true }),
+    alvo.resultado_meta ? null : campoMomento('m-meta', 'Ajuda em qual meta?', '', { list: 'metas', placeholder: 'ex.: organizar as finanças da casa' }),
     el('button', { type: 'button', classe: 'btn grande', id: 'm-pronto', onclick: () => fecharMomento(true) }, 'Pronto'),
     el('button', { type: 'button', classe: 'desfazer', onclick: desfazerMomento }, 'Desfazer'),
   ));

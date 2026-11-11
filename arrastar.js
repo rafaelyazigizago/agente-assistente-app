@@ -8,6 +8,14 @@ import * as dados from './dados.js';
 import { selecao, abrirAcoes } from './acoes.js';
 import { avisar, mostrarEstado, vibrar } from './ui.js';
 import { soltarNoDia } from './visoes.js';
+import { modoMvpLigado } from './modo-mvp.js';
+import { caixaNoHoje, mudancaNoHoje, PARTES_DO_HOJE } from './hoje-dia.js';
+import { diaLocal } from './data-local.js';
+
+// A parte do Hoje em que a tarefa está: no modo MVP, as 5 partes do protótipo v8; senão, as caixas de sempre.
+const caixaDe = (x) => (modoMvpLigado() ? caixaNoHoje(x, { parteSemLugar: parteFixa() }) : caixaDoHoje(x, secao(x)));
+let parteFixa = () => undefined;
+export const aoPedirParteSemLugar = (f) => { parteFixa = f; };
 
 const largo = matchMedia('(min-width: 1000px)');
 const porId = (id) => estado.tarefas.find((t) => t.id === id);
@@ -29,7 +37,8 @@ function podeSoltar(x, lista) {
   if (!x || !lista || tarefasArrastadas().length > 1) return false;
   const destino = lista.dataset.caixa;
   if (!destino) return true;
-  const origem = caixaDoHoje(x, secao(x));
+  const origem = caixaDe(x);
+  if (modoMvpLigado()) return !!origem;   // no Hoje do MVP, toda parte recebe e cede (a Prioridade também)
   return origem === destino || (origem !== 'prioridades' && destino !== 'prioridades' && !!origem);
 }
 const listaDe = (caixaNo) => caixaNo?.querySelector('.lista[data-reordena]');
@@ -122,8 +131,8 @@ export async function reordenar(x, alvoNo, depois) {
     mudouLista = quadranteDe(x) !== quadrante;
     destino = mudouLista ? mudancaParaQuadrante(x, quadrante) : null;
   } else if (caixa) {   // caixas do Hoje: muda o dia e a parte do dia, ou a situação
-    mudouLista = caixaDoHoje(x, secao(x)) !== caixa;
-    destino = mudouLista ? mudancaParaCaixa(x, caixa, estado.hoje) : null;
+    mudouLista = caixaDe(x) !== caixa;
+    destino = !mudouLista ? null : modoMvpLigado() ? mudancaNoHoje(caixa, diaLocal()) : mudancaParaCaixa(x, caixa, estado.hoje);
     if (mudouLista && !destino) return;
   } else if (lista.hasAttribute('data-subgrupo')) {
     destino = { area: lista.dataset.area || null, subgrupo: lista.dataset.subgrupo || null };
@@ -154,10 +163,16 @@ export async function reordenar(x, alvoNo, depois) {
     return;
   }
   mostrarEstado('Salvo ✓');
+  if (caixa && modoMvpLigado()) {   // Hoje do MVP: o destaque volta para a 1ª não feita e o dia fica organizado
+    estado.agoraId = null;
+    redesenhar();
+    diaOrganizado();
+  }
+  const nomesCaixa = Object.fromEntries(modoMvpLigado() ? PARTES_DO_HOJE : CAIXAS_DO_HOJE);
   const rotulo = !mudouLista ? `Nova ordem · ${x.titulo}`
     : coluna ? `${x.titulo} → ${COLUNAS_QUADRO.find(([c]) => c === coluna)[1]}`
     : quadrante ? `${x.titulo} → ${QUADRANTES.find(([q]) => q === quadrante)[1]}`
-    : caixa ? `${x.titulo} → ${Object.fromEntries(CAIXAS_DO_HOJE)[caixa]}`
+    : caixa ? `${x.titulo} → ${nomesCaixa[caixa]}`
     : `${x.titulo} → ${[destino.area, destino.subgrupo].filter(Boolean).join(' › ')}`;
   avisar(rotulo, async () => {
     desfazerNaTela();
@@ -166,6 +181,11 @@ export async function reordenar(x, alvoNo, depois) {
       mostrarEstado('Salvo ✓');
     } catch (erro) { falha(erro); }
   });
+}
+
+// Hoje do MVP: grava dias.organizado = true (antes do Run da 0008 a tabela não existe: o erro fica só no console, sem aviso).
+export function diaOrganizado() {
+  dados.marcarDiaOrganizado(diaLocal()).catch((erro) => console.warn('dia organizado não gravou', erro));
 }
 
 // ---------- Soltar numa caixa do Hoje fora de um cartão (caixa vazia, título, espaço livre) ----------

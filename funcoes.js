@@ -4,12 +4,13 @@
 // Fica guardado neste aparelho, como o resto de "Do seu jeito". Lido uma vez ao abrir; muda na hora em que você toca.
 import * as dados from './dados.js';
 import { $, el } from './ui.js';
+import { modoMvpLigado, ligarModoMvp, funcaoNoModo } from './modo-mvp.js';
 
 const CHAVE = 'centelha-funcoes';
 // [chave, nome, o que faz, grupo, precisa da migração 0007]
 export const FUNCOES = [
   ['chama', 'Chama', 'Foco numa tarefa só, com tempo (o Pomodoro)', 'Foco', false],
-  ['matriz', 'Importante, Urgente e a Matriz', 'Marcar o que é importante e o que é urgente, e ver os 4 quadros', 'Prioridade', false],
+  ['matriz', 'Importante, Urgente e O que fazer primeiro', 'Marcar o que é importante e o que é urgente, e ver as tarefas em 4 caixas', 'Prioridade', false],
   ['quadro', 'Quadro', 'As colunas A fazer, Em andamento, Aguardando e Feitas', 'Jeitos de ver uma lista', false],
   ['tabela', 'Tabela', 'Uma linha por tarefa; ordena pela coluna', 'Jeitos de ver uma lista', false],
   ['linha', 'Linha do tempo', 'Seis semanas, com uma barra por tarefa', 'Jeitos de ver uma lista', false],
@@ -28,7 +29,8 @@ export const aoMudarFuncoes = (f) => ouvintes.add(f);
 
 const precisa0007 = (chave) => FUNCOES.find(([k]) => k === chave)?.[4];
 // Ligada pela pessoa e, quando depende da 0007, com o banco já pronto
-export const usavel = (chave) => !!ligadas[chave] && (!precisa0007(chave) || dados.tem0007);
+// No modo MVP (Rafael: "A, nasce ligado"), nenhuma função extra aparece, mesmo ligada; a escolha da pessoa fica guardada.
+export const usavel = (chave) => funcaoNoModo(chave, modoMvpLigado()) && !!ligadas[chave] && (!precisa0007(chave) || dados.tem0007);
 
 function ligar(chave, sim) {
   ligadas = { ...ligadas, [chave]: sim };
@@ -37,10 +39,20 @@ function ligar(chave, sim) {
   ouvintes.forEach((f) => f());
 }
 
+// A chave "Modo MVP" em "Do seu jeito": desligar mostra o app inteiro; ligar volta ao Hoje e ao Travei. Nada se apaga.
+export function trocarModoMvp(sim) {
+  ligarModoMvp(sim);
+  desenharFuncoes();
+  ouvintes.forEach((f) => f());
+}
+
 // O bloco "Funções que você usa" em "Do seu jeito"
 export function desenharFuncoes() {
   const caixa = $('funcoes');
   if (!caixa) return;
+  const mvp = modoMvpLigado(), chave = $('modo-mvp');
+  if (chave) chave.checked = mvp;
+  if (mvp) { caixa.replaceChildren(el('p', { classe: 'ajuda' }, 'Com o Modo MVP ligado, as outras funções ficam guardadas e escondidas. Desligue o Modo MVP para escolher.')); return; }
   const grupos = [...new Set(FUNCOES.map(([, , , g]) => g))];
   caixa.replaceChildren(...grupos.flatMap((grupo) => [
     el('p', { classe: 'rotulo' }, grupo.toLocaleLowerCase('pt-BR')),
