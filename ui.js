@@ -1,4 +1,4 @@
-// Centelha · peças de tela reaproveitadas: criar elementos, a caixinha de concluir, a lâmpada, faíscas, aviso com desfazer, folhas, "Salvo ✓" e ouvir.
+// Agente Assistente · peças de tela: criar elementos, os ícones do protótipo de 10/11, o aviso com Desfazer e a vibração.
 export const $ = (id) => document.getElementById(id);
 
 export function el(tag, props = {}, ...filhos) {
@@ -15,129 +15,60 @@ export function el(tag, props = {}, ...filhos) {
   return n;
 }
 
-export const icone = (nome, classe = '') => `<svg class="${classe}" aria-hidden="true"><use href="#i-${nome}"/></svg>`;
-export const iconeEl = (nome, classe = '') => el('span', { html: icone(nome, classe), style: 'display:contents' });
-
-const VIDRO = '<circle class="brilho" cx="15" cy="13" r="15" fill="url(#g-brilho)" style="color:var(--luz)"/>' +
-  '<path class="vidro" d="M15 2a10.5 10.5 0 0 0-6 19.2c1.2.9 1.8 2.1 1.8 3.5V27h8.4v-2.3c0-1.4.6-2.6 1.8-3.5A10.5 10.5 0 0 0 15 2z"/>' +
-  '<rect class="base" x="10.6" y="28.3" width="8.8" height="2.6" rx="1.2"/><rect class="base" x="11.8" y="32" width="6.4" height="2.6" rx="1.2"/>';
-
-export const lampadaInterna = (acesa, x, y, l, a) =>
-  `<svg x="${x}" y="${y}" width="${l}" height="${a}" viewBox="0 0 30 40" class="lamp${acesa ? ' acesa' : ''}">${VIDRO}</svg>`;
-
-// A caixinha de concluir (lote 46, achado A1: a lâmpada não parecia uma caixinha; decisão 1 = A, 28/10).
-// Feita = caixinha cheia com o ✓ (não depende só da cor); a lâmpada pequena ao lado acende como resposta.
-export const caixinha = (feita) =>
-  `<svg viewBox="0 0 44 30" class="caixinha${feita ? ' feita' : ''}" aria-hidden="true"><rect class="caixa" x="1.5" y="2" width="26" height="26" rx="7"/>` +
-  `<path class="ok" d="M8.5 15.4l4.2 4.2 8.4-8.6"/>${lampadaInterna(feita, 30, 6, 13, 18)}</svg>`;
-
-export const movimento = () => document.body.dataset.movimento || 'vivo';
-
-export function reiniciar(elemento, classe) {
-  elemento.classList.remove(classe);
-  void elemento.offsetWidth;
-  elemento.classList.add(classe);
-}
-
-export function fagulhas(alvo) {
-  if (movimento() !== 'vivo') return;
-  const r = alvo.getBoundingClientRect();
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2.4;
-  for (let i = 0; i < 7; i++) {
-    const f = el('span', { classe: 'fagulha' });
-    f.style.left = cx - 3 + 'px';
-    f.style.top = cy - 3 + 'px';
-    document.body.append(f);
-    const ang = (-90 + (i - 3) * 28) * Math.PI / 180, dist = 26 + Math.random() * 18;
-    f.animate(
-      [{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${Math.cos(ang) * dist}px, ${Math.sin(ang) * dist}px) scale(.3)`, opacity: 0 }],
-      { duration: 520 + Math.random() * 160, easing: 'cubic-bezier(.2,.8,.3,1)' },
-    ).onfinish = () => f.remove();
-  }
-}
+// Os ícones do protótipo de 10/11 (os mesmos desenhos, traço 1,6)
+export const IC = {
+  assistente: '<path d="M4 5h16v11H9l-5 4z"/>',
+  hoje: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  seta: '<path d="M4 12h15M13 6l6 6-6 6"/>',
+  semana: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  listas: '<path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/>',
+  diario: '<path d="M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2zM12 6v14"/>',
+  financeiro: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+  crm: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3.1 2.5 3.5 5.2"/>',
+  triagem: '<path d="M4 4h16l-6 8v6l-4 2v-8z"/>',
+  calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 14h2M14 14h2M8 18h2"/>',
+  configuracoes: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  foco: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+  agente: '<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16h5"/>',
+  cadeado: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  buscar: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+};
+export const svg = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+// Um elemento com o ícone na frente do texto (como o data-ic do protótipo)
+export function comIcone(n, no) { no.insertAdjacentHTML('afterbegin', svg(n)); return no; }
 
 export function vibrar(padrao = 18) {
-  if (document.body.dataset.vibrar === 'sim' && navigator.vibrate) navigator.vibrate(padrao);
+  if (navigator.vibrate && localStorage.getItem('agente-vibrar') === 'sim') navigator.vibrate(padrao);
 }
 
-export function contar(elemento, de, ate, ms = 500) {
-  if (movimento() === 'parado' || de === ate) { elemento.textContent = ate; return; }
-  const inicio = performance.now();
-  const passo = (agora) => {
-    const p = Math.min(1, (agora - inicio) / ms);
-    elemento.textContent = Math.round(de + (ate - de) * p);
-    if (p < 1) requestAnimationFrame(passo);
-  };
-  requestAnimationFrame(passo);
-}
-
-// ---------- Estado ("Salvo ✓") ----------
+// O estado da gravação fica num atributo (para testes e leitores de tela); não há mais "Salvo ✓" na tela.
 export function mostrarEstado(texto, erro = false) {
-  const e = $('estado');
-  e.textContent = texto;
-  e.classList.toggle('erro', erro);
-  if (texto === 'Salvo ✓') reiniciar(e, 'pulso');
+  document.body.dataset.estado = texto;
+  document.body.classList.toggle('nao-salvou', erro);
 }
 
-// ---------- Aviso com desfazer: fica até a próxima ação, nunca some por tempo ----------
+// ---------- Aviso com Desfazer: fica até a próxima ação, nunca some por tempo ----------
 let desfazerAtual = null;
 export function avisar(texto, desfazer) {
   $('recado-texto').textContent = texto;
   desfazerAtual = desfazer || null;
   $('recado-desfazer').hidden = !desfazer;
   $('recado').hidden = false;
-  void $('recado').offsetWidth;   // força o desenho antes de animar (não depende de quadro de animação)
-  $('recado').classList.add('aberto');
 }
 export function fecharAviso() {
-  $('recado').classList.remove('aberto');
+  $('recado').hidden = true;
+  desfazerAtual = null;
 }
 export function ligarAviso() {
   $('recado-desfazer').addEventListener('click', () => {
-    fecharAviso();
     const d = desfazerAtual;
-    desfazerAtual = null;
+    fecharAviso();
     if (d) d();
   });
   document.addEventListener('pointerdown', (e) => {
     if (e.target.closest('#recado') || e.target.closest('[data-mantem-aviso]')) return;
     fecharAviso();
   });
-}
-
-// ---------- Folhas que sobem ----------
-let folhaAberta = null, aoFecharFolha = null;
-export function abrirFolha(id, aoFechar) {
-  const veu = $('veu'), f = $(id);
-  folhaAberta = id;
-  aoFecharFolha = aoFechar || null;
-  veu.hidden = false;
-  f.hidden = false;
-  void f.offsetWidth;
-  veu.classList.add('aberto');
-  f.classList.add('aberta');
-  veu.onclick = () => fecharFolha(id);
-  const foco = f.querySelector('button, textarea, input');
-  setTimeout(() => foco?.focus({ preventScroll: true }), 50);
-}
-export function fecharFolha(id = folhaAberta) {
-  if (!id) return;
-  const veu = $('veu'), f = $(id);
-  veu.classList.remove('aberto');
-  f.classList.remove('aberta');
-  folhaAberta = null;
-  const depois = aoFecharFolha;
-  aoFecharFolha = null;
-  if (depois) depois();
-  setTimeout(() => { veu.hidden = true; f.hidden = true; }, movimento() === 'parado' ? 0 : 420);
-}
-export const folhaAtual = () => folhaAberta;
-
-// ---------- Ouvir ----------
-export function ouvir(texto) {
-  if (!('speechSynthesis' in window) || !texto) return;
-  speechSynthesis.cancel();
-  const fala = new SpeechSynthesisUtterance(texto);
-  fala.lang = 'pt-BR';
-  speechSynthesis.speak(fala);
 }

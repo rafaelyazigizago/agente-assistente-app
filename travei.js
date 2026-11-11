@@ -4,7 +4,7 @@
 // Este é o ÚNICO ponto que grava a travada (data-model): "pendente" na 1ª resposta, depois "aceitou", "outro" ou "sem_resposta".
 // Sem internet, a linha fica na fila do aparelho (localStorage) e sobe quando a rede volta.
 // O que a IA responde entra sempre como texto (textContent), nunca como HTML (LLM05).
-import { $, el, avisar } from './ui.js';
+import { $, el, avisar, comIcone } from './ui.js';
 import * as dados from './dados.js';
 import { passoSemIA, ehCrise, CONTATOS_CRISE, AVISO_SEM_IA } from './base-passos.js';
 
@@ -72,10 +72,9 @@ async function mudarLinha(ref, patch) {
 
 // ---------- A conversa ----------
 let conversa = null;      // { id, tarefa, texto, perguntaIa, resposta, perguntaFeita, passos, tecnicas, linha, linhaEhPergunta, resultado, crise }
-let escondidas = [];      // as telas que estavam à vista, para voltar a elas
 
 const tela = () => $('tela-travei');
-const rolar = () => { const t = tela(); t.querySelector('.tv-conversa')?.lastElementChild?.scrollIntoView({ block: 'end', behavior: 'smooth' }); };
+const rolar = () => { const r = tela().querySelector('.tv-rolagem'); if (r) r.scrollTop = r.scrollHeight; };
 function balao(quem, ...filhos) {
   const b = el('div', { classe: `tv-b ${quem}` }, quem.startsWith('ela') ? el('span', { classe: 'quem' }, 'Assistente') : null, ...filhos);
   tela().querySelector('.tv-conversa').append(b);
@@ -84,39 +83,35 @@ function balao(quem, ...filhos) {
 }
 const tirarAcoes = () => tela().querySelectorAll('.tv-acoes').forEach((a) => a.remove());
 
-// alvo: a tarefa (objeto com id e titulo) ou null (geral, pela primeira tela)
+// A casca (app.js) diz como mostrar e tirar a tela do Travei (é uma vista do protótipo, sem a barra de baixo)
+let casca = { mostrar() {}, fechar() {} };
+export const ligarTela = (f) => { casca = f; };
+
+// alvo: a tarefa (objeto com id e titulo) ou null (geral, pela primeira tela). O desenho é o do protótipo de 10/11.
 export function abrirTravei(alvo = null) {
   conversa = { id: crypto.randomUUID(), tarefa: alvo, texto: null, perguntaIa: null, resposta: null, perguntaFeita: false,
     passos: [], tecnicas: [], linha: null, linhaEhPergunta: false, resultado: null, crise: false };
-  const campo = el('input', { id: 'travei-campo', classe: 'tv-campo', type: 'text', autocomplete: 'off', placeholder: 'Escreva do seu jeito, até “não sei dizer”', 'aria-label': 'O que está acontecendo' });
+  const campo = el('input', { id: 'travei-campo', classe: 'campo tv-campo', type: 'text', autocomplete: 'off', enterkeyhint: 'send', placeholder: 'Escreva do seu jeito, até “não sei dizer”', 'aria-label': 'O que está acontecendo' });
   campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); enviar(); } });
+  const envio = el('button', { type: 'button', classe: 'btn principal estreito tv-enviar', onclick: () => enviar() }, 'Enviar');
   tela().replaceChildren(
-    el('div', { classe: 'tv-rolagem' },
+    el('div', { classe: 'rolagem tv-rolagem' }, el('div', { classe: 'col' },
       el('div', { classe: 'cabeca' }, el('button', { type: 'button', classe: 'voltar', onclick: () => sair() }, '‹ Voltar')),
-      alvo ? el('p', { classe: 'caminho tv-tarefa' }, alvo.titulo) : null,
+      el('p', { classe: 'caminho tv-tarefa' }, alvo ? alvo.titulo : ''),
       el('h1', { classe: 'titulo', id: 'titulo-travei' }, 'Travei'),
-      el('div', { classe: 'tv-conversa', 'aria-live': 'polite' })),
-    el('div', { classe: 'tv-rodape' }, el('div', { classe: 'linha' }, campo,
-      el('button', { type: 'button', classe: 'btn principal estreito', onclick: () => enviar() }, 'Enviar'),
-      el('button', { type: 'button', classe: 'btn claro estreito tv-fale', onclick: (e) => falar(e.currentTarget) }, 'Fale'))),
-    el('div', { classe: 'emergencia' }, el('button', { type: 'button', classe: 'btn claro', onclick: chamarLara }, 'Chamar Lara (Apoio)')),
+      el('div', { classe: 'tv-conversa', 'aria-live': 'polite' }))),
+    el('div', { classe: 'tv-rodape' }, el('div', { classe: 'dentro' }, el('div', { classe: 'linha' }, campo, envio,
+      comIcone('mic', el('button', { type: 'button', classe: 'fale tv-fale', onclick: (e) => falar(e.currentTarget) }, 'Fale'))))),
+    el('div', { classe: 'emergencia' }, el('div', { classe: 'dentro' }, el('button', { type: 'button', classe: 'btn', 'data-mantem-aviso': true, onclick: chamarLara }, 'Chamar Lara (Apoio)'))),
   );
   balao('ela', alvo ? ABERTURA : ABERTURA_GERAL);
-  mostrarTela();
+  casca.mostrar();
   setTimeout(() => campo.focus({ preventScroll: true }), 50);
 }
 
-function mostrarTela() {
-  escondidas = [...document.querySelectorAll('#principal > .tela:not([hidden]), #abas:not([hidden]), #pet:not([hidden])')].filter((n) => n.id !== 'tela-travei');
-  escondidas.forEach((n) => { n.hidden = true; });
-  tela().hidden = false;
-  window.scrollTo({ top: 0 });
-}
 function fecharTela() {
-  tela().hidden = true;
-  escondidas.forEach((n) => { n.hidden = false; });
-  escondidas = [];
   conversa = null;
+  casca.fechar();
 }
 
 function sair() {
@@ -221,10 +216,10 @@ async function aceitar() {
   const c = conversa;
   if (!c) return;
   c.resultado = 'aceitou';
-  const ref = c.linha;
-  fecharTela();
-  avisar(AVISO_COMBINADO);
-  await mudarLinha(ref, { resultado: 'aceitou' });
+  tirarAcoes();
+  balao('eu', 'Vou fazer agora');
+  setTimeout(() => { if (conversa === c) balao('ela', AVISO_COMBINADO); }, 600);
+  await mudarLinha(c.linha, { resultado: 'aceitou' });
 }
 
 async function outroPasso() {
@@ -252,8 +247,8 @@ function falar(botao) {
   const r = new Reconhecer();
   r.lang = 'pt-BR';
   r.interimResults = true;
-  botao.textContent = 'Ouvindo';
+  botao.lastChild.textContent = 'Ouvindo';
   r.onresult = (e) => { $('travei-campo').value = [...e.results].map((x) => x[0].transcript).join(' '); };
-  r.onend = () => { botao.textContent = 'Fale'; $('travei-campo')?.focus(); };
+  r.onend = () => { botao.lastChild.textContent = 'Fale'; $('travei-campo')?.focus(); };
   r.start();
 }

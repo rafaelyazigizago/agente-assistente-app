@@ -1,14 +1,12 @@
-// Centelha · service worker: sempre pergunta ao servidor se o arquivo mudou; sem internet, abre a última guardada.
+// Agente Assistente · service worker: sempre pergunta ao servidor se o arquivo mudou; sem internet, abre a última guardada.
 // Os dados (Supabase) nunca passam por aqui: só os arquivos da página.
 // A versão vem de versao.js, carimbada pelo scripts/publicar.sh. Mudou o carimbo, o navegador instala este service worker de novo.
 importScripts('versao.js');
-const VERSAO = `centelha-${self.VERSAO_APP || 'dev'}`;
+const VERSAO = `assistente-${self.VERSAO_APP || 'dev'}`;
 const ARQUIVOS = [
   './', 'index.html', 'estilo.css', 'manifest.webmanifest', 'versao.js',
-  'app.js', 'datas.js', 'calculos.js', 'dados.js', 'estado.js', 'preferencias.js', 'ui.js', 'telas.js', 'tela-tarefa.js', 'tela-diario.js', 'tela-grupos.js', 'tela-lista.js', 'visoes.js', 'menu.js', 'acoes.js', 'pet.js', 'arrastar.js', 'chama.js', 'etiquetas.js', 'listas.js', 'funcoes.js', 'modo-mvp.js', 'base-passos.js', 'data-local.js', 'hoje.js', 'hoje-dia.js', 'travei.js',
+  'app.js', 'datas.js', 'calculos.js', 'dados.js', 'estado.js', 'ui.js', 'tema.js', 'base-passos.js', 'data-local.js', 'hoje-dia.js', 'travei.js',
   'fontes/atkinson-hyperlegible-latin-400-normal.woff2', 'fontes/atkinson-hyperlegible-latin-700-normal.woff2',
-  'fontes/bricolage-grotesque-latin-700-normal.woff2', 'fontes/bricolage-grotesque-latin-800-normal.woff2',
-  'fontes/lexend-latin-400-normal.woff2', 'fontes/lexend-latin-600-normal.woff2',
   'vendor/supabase-2.117.2.js', 'icones/icone-192.png', 'icones/icone-512.png',
 ];
 

@@ -242,7 +242,7 @@ export async function exportarTudo(espacoId, usuarioId) {
   const doEspaco = async (tabela) => (tem0007 ? exigir(await banco.from(tabela).select('*').eq('espaco_id', espacoId)) : []);
   const [projetos, etiquetas, listas] = [await doEspaco('projetos'), await doEspaco('etiquetas'), await doEspaco('listas')];
   return {
-    sistema: 'Centelha', exportado_em: new Date().toISOString(),
+    sistema: 'Agente Assistente', exportado_em: new Date().toISOString(),
     contagem: { tarefas: tarefas.length, subtarefas: subtarefas.length, comentarios: comentarios.length, anexos: anexos.length, travadas: travadas.length, diario: diario.length, diario_midias: diario_midias.length,
       projetos: projetos.length, etiquetas: etiquetas.length, listas: listas.length },
     tarefas, subtarefas, comentarios, anexos, travadas, diario, diario_midias, projetos, etiquetas, listas,

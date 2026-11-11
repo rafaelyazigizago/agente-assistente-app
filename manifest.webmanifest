@@ -1,6 +1,6 @@
 {
-  "name": "Centelha",
-  "short_name": "Centelha",
+  "name": "Agente Assistente",
+  "short_name": "Assistente",
   "description": "Tarefas, ideias e segundo cérebro de Rafael Yazigi.",
   "lang": "pt-BR",
   "start_url": "./",

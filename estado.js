@@ -1,8 +1,8 @@
-// Centelha · o estado do app e as ações que mudam tarefas: tudo muda na tela na hora, grava no banco e pode ser desfeito.
+// Agente Assistente · o estado do app e as ações que mudam tarefas: tudo muda na tela na hora, grava no banco e pode ser desfeito.
 import { hojeISO, rotuloDia, interpretar } from './datas.js';
 import { secaoDe, situacaoDe, comSituacao, temMarca, comMarca, proximaVez } from './calculos.js';
 import * as dados from './dados.js';
-import { avisar, mostrarEstado, fagulhas, vibrar } from './ui.js';
+import { avisar, mostrarEstado, vibrar } from './ui.js';
 
 export const estado = {
   usuario: null,
@@ -70,12 +70,9 @@ export async function mudar(t, patch, { mensagem, desfazer, marca } = {}) {
   return true;
 }
 
-export function alternarFeita(t, botao) {
+export function alternarFeita(t) {
   if (t.estado !== 'feita') {
-    estado.recem = t.id;   // a lâmpada nova nasce acendendo (a tela é redesenhada)
-    if (botao) fagulhas(botao);
     vibrar();
-    document.dispatchEvent(new CustomEvent('centelha:acendeu'));   // o pet acende junto
     if (t.repetir_dias > 0) {   // repete: nasce a próxima vez, e o Desfazer leva as duas de volta
       return mudar(t, { estado: 'feita', feita_em: new Date().toISOString() }).then(async (ok) => {
         if (!ok) return false;
