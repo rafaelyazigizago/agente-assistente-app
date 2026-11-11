@@ -71,3 +71,27 @@ export function respostaDaNoite({ agora = new Date(), vezes }) {
   if (vezes !== null && !(Number.isInteger(vezes) && vezes >= 0)) throw new Error(`resposta inválida: ${vezes}`);
   return { sem_travei: vezes, pergunta_feita_em: agora.toISOString() };
 }
+
+// A resposta da noite guardada no aparelho até subir (passagem da Fase 8: sem rede, ela se perdia).
+// guarda: { ler(), gravar(v), apagar() } · enviar(mudarDia) → true se não sobrou nada guardado, false se ainda falta subir
+export const RESPOSTA_DA_NOITE = 'agente-noite-pendente';
+export function criarRespostaGuardada(guarda) {
+  const ler = () => { try { const v = guarda.ler(); return v && typeof v.dia === 'string' && v.patch ? v : null; } catch { return null; } };
+  return {
+    guardar(dia, patch) { try { guarda.gravar({ dia, patch }); } catch { /* sem espaço: tenta só agora */ } },
+    async enviar(mudarDia) {
+      const v = ler();
+      if (!v) return true;
+      try { await mudarDia(v.dia, v.patch); } catch { return false; }
+      try { guarda.apagar(); } catch { /* fica; subir de novo grava o mesmo */ }
+      return true;
+    },
+  };
+}
+
+// Limite de vezes: pode() é true no máximo uma vez a cada `ms` (passagem da Fase 8: a pergunta da noite
+// consultava o banco a cada volta do segundo plano)
+export function aCada(ms, relogio = Date.now) {
+  let ultima = -Infinity;
+  return () => { const t = relogio(); if (t - ultima < ms) return false; ultima = t; return true; };
+}

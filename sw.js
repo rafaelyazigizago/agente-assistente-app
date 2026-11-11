@@ -5,7 +5,7 @@ importScripts('versao.js');
 const VERSAO = `assistente-${self.VERSAO_APP || 'dev'}`;
 const ARQUIVOS = [
   './', 'index.html', 'estilo.css', 'manifest.webmanifest', 'versao.js',
-  'app.js', 'datas.js', 'calculos.js', 'dados.js', 'estado.js', 'ui.js', 'tema.js', 'base-passos.js', 'data-local.js', 'hoje-dia.js', 'travei.js', 'fale.js', 'whisper-worker.js', 'inicio.js', 'contagem.js',
+  'app.js', 'datas.js', 'calculos.js', 'dados.js', 'estado.js', 'ui.js', 'tema.js', 'base-passos.js', 'data-local.js', 'hoje-dia.js', 'travei.js', 'fale.js', 'whisper-worker.js', 'inicio.js', 'contagem.js', 'sair.js',
   'fontes/atkinson-hyperlegible-latin-400-normal.woff2', 'fontes/atkinson-hyperlegible-latin-700-normal.woff2',
   'vendor/supabase-2.117.2.js', 'icones/icone-192.png', 'icones/icone-512.png',
 ];

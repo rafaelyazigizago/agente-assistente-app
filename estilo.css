@@ -261,6 +261,8 @@ button.botao { width: 100%; }
 .tv-b.eu .tv-tecnica { color: inherit; }
 .tv-b p { margin: 0; }
 .tv-contatos { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
+.tv-quero-falar { margin-top: 12px; width: auto; }
+.tv-contatos[hidden] { display: none; }
 .tv-contatos a.btn { display: inline-flex; width: auto; text-decoration: none; }
 .tv-mapa { margin: 4px 0 0; padding-left: 24px; }
 .vista[data-v="travei"] .tv-tarefa:empty { display: none; }

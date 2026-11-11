@@ -7,17 +7,35 @@ import { el, avisar, comIcone } from './ui.js';
 
 // ---------- O miolo, sem tela (testado em testes/fale.test.mjs) ----------
 // gravador: { comecar(), parar() → Blob } · transcrever(Blob) → texto · rascunhos: { gravar(r), ler(tela), apagar(tela) }
-export function criarFale({ gravador, transcrever, rascunhos, agora = () => new Date() }) {
+// vez: um só gravador por vez no aparelho. { tela: a que está gravando, aoEncerrar(tela, Promise<texto>) }.
+// Fale numa tela com outra gravando fecha a 1ª (o áudio vira o rascunho dela) antes de abrir a 2ª (passagem da Fase 8).
+export function criarFale({ gravador, transcrever, rascunhos, agora = () => new Date(), vez = { tela: null } }) {
+  async function escrever(tela, audio) {
+    const rascunho = { tela, texto: '', audio, criado_em: agora().toISOString() };
+    await rascunhos.gravar(rascunho);   // antes do Whisper: se o app fechar no meio, o áudio não se perde
+    const texto = String(await transcrever(audio) ?? '').trim();
+    // Enviou enquanto o Whisper escrevia (revisão T037, achado 10): o rascunho já foi apagado e não volta
+    if (await rascunhos.ler(tela)) await rascunhos.gravar({ ...rascunho, texto });
+    return texto;
+  }
   return {
-    comecar: () => gravador.comecar(),
+    async comecar(tela) {
+      if (vez.tela === tela) return;
+      const outra = vez.tela;
+      if (outra) {
+        const audio = await gravador.parar();
+        vez.tela = null;
+        const texto = escrever(outra, audio);
+        texto.catch(() => {});   // quem avisa do erro é a tela de antes (aoEncerrar)
+        vez.aoEncerrar?.(outra, texto);
+      }
+      await gravador.comecar();
+      vez.tela = tela;
+    },
     async parar(tela) {
       const audio = await gravador.parar();
-      const rascunho = { tela, texto: '', audio, criado_em: agora().toISOString() };
-      await rascunhos.gravar(rascunho);   // antes do Whisper: se o app fechar no meio, o áudio não se perde
-      const texto = String(await transcrever(audio) ?? '').trim();
-      // Enviou enquanto o Whisper escrevia (revisão T037, achado 10): o rascunho já foi apagado e não volta
-      if (await rascunhos.ler(tela)) await rascunhos.gravar({ ...rascunho, texto });
-      return texto;
+      if (vez.tela === tela) vez.tela = null;
+      return escrever(tela, audio);
     },
     async corrigir(tela, texto) {
       const r = await rascunhos.ler(tela);
@@ -59,6 +77,8 @@ function gravadorDoNavegador() {
   let gravador = null, pedacos = [];
   return {
     async comecar() {
+      // segurança: um gravador esquecido aberto é desligado antes (o microfone não fica preso)
+      if (gravador?.state === 'recording') { gravador.onstop = null; gravador.stop(); gravador.stream.getTracks().forEach((t) => t.stop()); }
       const fluxo = await navigator.mediaDevices.getUserMedia({ audio: true });
       pedacos = [];
       gravador = new MediaRecorder(fluxo);
@@ -106,10 +126,13 @@ async function transcreverNoAparelho(audio) {
 }
 
 // ---------- O botão Fale, igual ao do protótipo de 10/11 ----------
+// Um gravador por vez no aparelho todo (Hoje, Início e Travei dividem o microfone)
+const vez = { tela: null, aoEncerrar: null };
 const fale = () => criarFale({
   gravador: window.__gravadorFalso ?? (gravadorAtual ??= gravadorDoNavegador()),
   transcrever: window.__vozFalsa ?? transcreverNoAparelho,
   rascunhos: rascunhosNoAparelho,
+  vez,
 });
 let gravadorAtual = null, aoBaixar = null;
 // A fase de cada tela fica aqui, e não no botão: a tela pode ser redesenhada no meio da gravação (revisão T037, achado 2)
@@ -121,28 +144,40 @@ const enviando = new Set();
 // vermelha piscando); depois, "Analisando"; na 1ª vez, enquanto o Whisper baixa, "Baixando N%".
 const TEXTO = { parado: 'Fale', ouvindo: 'Enviar gravação', escrevendo: 'Analisando' };
 
+// O campo de cada tela (o último botão desenhado), para o texto de uma gravação fechada por outra tela
+const camposFale = new Map();
+function pintarFale(b, f) { b.lastChild.textContent = TEXTO[f]; b.setAttribute('aria-pressed', f === 'ouvindo'); b.dataset.fase = f; if (f === 'parado') b.setAttribute('aria-label', 'Fale'); else b.removeAttribute('aria-label'); }
+function mostrarEm(tela, f) { fases.set(tela, f); document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => pintarFale(b, f)); }
+
 // tela: "hoje" ou "travei" · campo(): o campo onde o texto entra
 export function botaoFale(tela, campo) {
   // data-fase: no celular, parado, o botão mostra só o microfone (Rafael, 11/11/2026: "B · Botões só com ícone")
-  const pintar = (b, f) => { b.lastChild.textContent = TEXTO[f]; b.setAttribute('aria-pressed', f === 'ouvindo'); b.dataset.fase = f; if (f === 'parado') b.setAttribute('aria-label', 'Fale'); else b.removeAttribute('aria-label'); };
-  const mostrar = (f) => { fases.set(tela, f); document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => pintar(b, f)); pintar(botao, f); };
+  const pintar = pintarFale;
+  const mostrar = (f) => { mostrarEm(tela, f); pintar(botao, f); };
+  // O texto chega: vai para o campo da tela (se ela estiver aberta); erro avisa; no fim, o botão volta a "Fale"
+  const receber = async (tela, campo, texto) => {
+    try {
+      const t = await texto, c = campo();
+      if (c && c.isConnected && t) { c.value = t; c.dispatchEvent(new Event('input', { bubbles: true })); c.focus({ preventScroll: true }); }
+    } catch {
+      avisar('Não consegui escrever o que você falou. O áudio ficou guardado; escreva no campo.');
+    } finally { mostrarEm(tela, 'parado'); }
+  };
   const botao = comIcone('mic', el('button', { type: 'button', classe: 'fale', 'data-fale': tela, 'data-mantem-aviso': true, onclick: async () => {
     const fase = fases.get(tela) ?? 'parado';
     if (fase === 'escrevendo') return;
     if (fase === 'parado') {
-      try { await fale().comecar(); mostrar('ouvindo'); } catch { avisar('Não consegui ouvir o microfone. Escreva no campo.'); }
+      // outra tela gravando: o gravador dela fecha, o áudio vira o rascunho dela e o texto vai para o campo dela
+      vez.aoEncerrar = (outra, texto) => { mostrarEm(outra, 'escrevendo'); receber(outra, camposFale.get(outra) ?? (() => null), texto); };
+      try { await fale().comecar(tela); mostrar('ouvindo'); } catch { avisar('Não consegui ouvir o microfone. Escreva no campo.'); }
       return;
     }
     mostrar('escrevendo');
     aoBaixar = (pronto) => { document.querySelectorAll(`button.fale[data-fale="${tela}"]`).forEach((b) => { b.lastChild.textContent = pronto >= 100 ? TEXTO.escrevendo : `Baixando ${pronto ?? 0}%`; b.dataset.fase = 'escrevendo'; }); };
-    try {
-      const texto = await fale().parar(tela);
-      const c = campo();
-      if (c && texto) { c.value = texto; c.dispatchEvent(new Event('input', { bubbles: true })); c.focus({ preventScroll: true }); }
-    } catch {
-      avisar('Não consegui escrever o que você falou. O áudio ficou guardado; escreva no campo.');
-    } finally { mostrar('parado'); }
+    await receber(tela, campo, fale().parar(tela));
+    pintar(botao, 'parado');
   } }, el('span', {}, TEXTO.parado)));
+  camposFale.set(tela, campo);
   pintar(botao, fases.get(tela) ?? 'parado');
   return botao;
 }
@@ -157,6 +192,13 @@ export function ligarCampo(tela, campo) {
 // Rafael tocou em Enviar: a partir daqui o rascunho não volta ao campo; se não gravou, volta a valer
 export const vaiEnviar = (tela) => { enviando.add(tela); };
 export const naoEnviou = (tela) => { enviando.delete(tela); };
+
+// Saiu da conta: todos os rascunhos (com o áudio) saem do aparelho (passagem da Fase 8)
+export const apagarRascunhos = () => new Promise((ok, erro) => {
+  const p = indexedDB.deleteDatabase(BANCO);
+  p.onsuccess = p.onblocked = () => ok();
+  p.onerror = () => erro(p.error);
+});
 
 // Rafael tocou em Enviar: o áudio daquela tela é apagado (FR-016)
 export const aoEnviar = (tela) => fale().enviado(tela).catch(() => {}).finally(() => enviando.delete(tela));

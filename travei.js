@@ -4,7 +4,7 @@
 // Este é o ÚNICO ponto que grava a travada (data-model): "pendente" na 1ª resposta, depois "aceitou", "outro" ou "sem_resposta".
 // Sem internet, a linha fica na fila do aparelho (localStorage) e sobe quando a rede volta.
 // O que a IA responde entra sempre como texto (textContent), nunca como HTML (LLM05).
-import { $, el, avisar, comIcone } from './ui.js';
+import { $, el, comIcone } from './ui.js';
 import * as dados from './dados.js';
 import { passoSemIA, ehCrise, CONTATOS_CRISE, AVISO_SEM_IA } from './base-passos.js';
 import { botaoFale, ligarCampo, aoEnviar } from './fale.js';
@@ -12,8 +12,9 @@ import { botaoFale, ligarCampo, aoEnviar } from './fale.js';
 export const ABERTURA = 'O que está acontecendo com esta tarefa? Escreva ou fale do seu jeito. Pode ser “não sei dizer”.';
 export const ABERTURA_GERAL = 'O que está acontecendo? Pode ser uma tarefa ou algo mais geral. Escreva ou fale do seu jeito. Pode ser “não sei dizer”.';
 export const TEXTO_LARA = 'Oi, Lara. Travei agora e preciso de apoio. Você pode falar comigo?';
-export const AVISO_TETO = 'A IA chegou no limite de gasto de hoje. Até amanhã, os passos vêm da Base de Técnicas.';
-const AVISO_CADASTRAR_LARA = 'Cadastre o WhatsApp da Lara no “Do seu jeito” para chamar por aqui.';
+export const TEXTO_CRISE = 'Parece que está muito difícil agora. A tarefa pode esperar.';
+// Rafael, 11/11/2026: "A · Mais simples" (sem falar em gasto nem em "Base de Técnicas")
+export const AVISO_TETO = 'A IA descansa até amanhã. Até lá, os passos vêm da nossa lista pronta.';
 const AVISO_COMBINADO = 'Combinado. Quando terminar, marque a tarefa no Hoje. Se travar de novo, é só voltar aqui.';
 const TEMPO_MAXIMO_MS = 25000;   // a função desiste aos 20 s; com folga, ainda bem dentro de 1 min (FR-006, FR-015)
 const PENDENTE_MAX_MIN = 30;
@@ -85,7 +86,7 @@ function balao(quem, ...filhos) {
 const tirarAcoes = () => tela().querySelectorAll('.tv-acoes').forEach((a) => a.remove());
 
 // A casca (app.js) diz como mostrar e tirar a tela do Travei (é uma vista do protótipo, sem a barra de baixo)
-let casca = { mostrar() {}, fechar() {} };
+let casca = { mostrar() {}, fechar() {}, abrirApoio() {} };
 export const ligarTela = (f) => { casca = f; };
 
 // alvo: a tarefa (objeto com id e titulo) ou null (geral, pela primeira tela). O desenho é o do protótipo de 10/11.
@@ -167,10 +168,15 @@ async function mostrar(r, origem, avisoExtra = null) {
   const c = conversa;
   if (r.tipo === 'crise') {
     c.crise = true;
-    balao('ela crise', el('p', {}, 'Agora o mais importante é você. Fale com alguém agora:'),
-      el('ul', { classe: 'tv-contatos' }, ...(r.contatos?.length ? r.contatos : CONTATOS_CRISE).map((k) =>
-        el('li', {}, el('a', { href: `tel:${String(k.numero).replace(/\D/g, '')}`, classe: 'btn' }, `${k.nome} ${k.numero}`), ` · ${k.explica ?? ''}`))));
+    // Rafael, 11/11/2026: "Não quero induzir alguém a tomar uma atitude" → "B · Contatos num botão":
+    // só reconhece; o CVV e o SAMU aparecem ao tocar em "Quero falar com alguém"
+    const contatos = el('ul', { classe: 'tv-contatos', hidden: true }, ...(r.contatos?.length ? r.contatos : CONTATOS_CRISE).map((k) =>
+      el('li', {}, el('a', { href: `tel:${String(k.numero).replace(/\D/g, '')}`, classe: 'btn' }, `${k.nome} ${k.numero}`), ` · ${k.explica ?? ''}`)));
+    const quero = el('button', { type: 'button', classe: 'btn tv-quero-falar', onclick: () => { contatos.hidden = false; quero.remove(); } }, 'Quero falar com alguém');
+    balao('ela crise', el('p', {}, TEXTO_CRISE), quero, contatos);
     tela().querySelector('.tv-rodape').hidden = true;   // a técnica para aqui (FR-010)
+    // Rafael, 11/11/2026: na crise, o "Chamar Lara (Apoio)" ganha destaque (o botão principal, escuro)
+    tela().querySelector('.emergencia .btn')?.classList.add('principal');
     await gravar({ crise: true, tecnica: null, passo: null, origem });
     return;
   }
@@ -239,7 +245,8 @@ async function outroPasso() {
 // "Chamar Lara (Apoio)": abre o WhatsApp com o texto base, sem nada da tarefa; quem envia é Rafael (FR-011)
 function chamarLara() {
   const numero = numeroLara();
-  if (!numero) { avisar(AVISO_CADASTRAR_LARA); return; }
+  // Rafael, 11/11/2026: "O usuário precisa inserir o contato no campo de 'Apoio'" → o toque abre o campo, por cima da conversa
+  if (!numero) { casca.abrirApoio?.(); return; }
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(textoLara())}`, '_blank', 'noopener');
 }
 

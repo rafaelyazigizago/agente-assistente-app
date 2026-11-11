@@ -11,9 +11,10 @@ import { diaLocal, diaAnterior } from './data-local.js';
 import { PARTES_DO_HOJE, parteDaHora, partesDoHoje, tarefaDeAgora, caixaNoHoje, mudancaNoHoje } from './hoje-dia.js';
 import { abrirTravei, ligarTela as ligarTelaTravei, aoAbrirOApp as aoAbrirOTravei, TEXTO_LARA } from './travei.js';
 import * as tema from './tema.js';
-import { botaoFale, ligarCampo, aoEnviar, vaiEnviar, naoEnviou } from './fale.js';
+import { botaoFale, ligarCampo, aoEnviar, vaiEnviar, naoEnviou, apagarRascunhos } from './fale.js';
+import { limparAoSair } from './sair.js';
 import { abrirODia, marcarOrganizado, guardaDoAparelho } from './inicio.js';
-import { semanaDe, contarSemana, perguntaDaNoite, respostaDaNoite, textoDaContagem } from './contagem.js';
+import { semanaDe, contarSemana, perguntaDaNoite, respostaDaNoite, textoDaContagem, criarRespostaGuardada, RESPOSTA_DA_NOITE, aCada } from './contagem.js';
 
 // ---------- As seções (as mesmas do protótipo) ----------
 // Assistente e Menu são fixos; Configurações fica sempre dentro do Menu. No MVP só o Hoje tem tela.
@@ -235,6 +236,7 @@ function desenharTarefa() {
 
 // ---------- A folha de baixo: Menu, Configurações, Escolher a barra, Mais ações, Mudar a parte do dia ----------
 let vistaFolha = null, tarefaMais = null;
+let apoioPeloTravei = false;   // o Apoio aberto pelo "Chamar Lara (Apoio)" do Travei, sem número (Rafael, 11/11/2026)
 const folha = () => $('folha');
 const topo = (titulo, volta) => [el('div', { classe: 'folha-topo' },
   volta ? el('button', { type: 'button', classe: 'voltar', 'data-vista': volta }, '‹ Voltar') : el('h2', {}, titulo),
@@ -303,7 +305,7 @@ function desenharFolha() {
     // O texto base da mensagem (FR-011): só no aparelho; vazio volta ao padrão
     const texto = el('textarea', { id: 'lara-texto', classe: 'campo', rows: 3, 'aria-label': 'Mensagem para a Lara' });
     texto.value = lerAparelho('agente-lara-texto') || TEXTO_LARA;
-    conteudo = [...topo('Apoio', 'configuracoes'), ajuda('Quem você chama quando trava: Lara Yazigi · WhatsApp'), campo,
+    conteudo = [...topo('Apoio', apoioPeloTravei ? null : 'configuracoes'), ajuda('Quem você chama quando trava: Lara Yazigi · WhatsApp'), campo,
       secao('Mensagem para a Lara'), texto,
       el('div', { classe: 'mt-p' }, el('button', { type: 'button', classe: 'btn principal', onclick: () => {
         const n = campo.value.replace(/\D/g, '');
@@ -312,7 +314,8 @@ function desenharFolha() {
           if (n) localStorage.setItem('agente-lara-whatsapp', n); else localStorage.removeItem('agente-lara-whatsapp');
           if (m && m !== TEXTO_LARA) localStorage.setItem('agente-lara-texto', m); else localStorage.removeItem('agente-lara-texto');
         } catch { /* vale só agora */ }
-        vistaFolha = 'configuracoes'; desenharFolha();
+        if (apoioPeloTravei) fecharFolha();   // aberto pelo Travei: Salvar volta à conversa
+        else { vistaFolha = 'configuracoes'; desenharFolha(); }
       } }, 'Salvar'))];
   } else if (v === 'jeito') {
     f.setAttribute('aria-label', 'Do seu jeito');
@@ -385,6 +388,7 @@ function fecharFolha() {
   $('veu').classList.remove('on');
   folha().classList.remove('on');
   vistaFolha = null;
+  apoioPeloTravei = false;
 }
 
 // Dia organizado: arrastou ou mudou a parte (grava dias.organizado; antes do Run da 0008 o erro fica só no console)
@@ -581,9 +585,19 @@ async function pedirLogin() {
 // Rafael, 11/11/2026: no Início, acima do "Me ajude a destravar": "3 tarefas travadas esta semana.", sem a meta.
 // Antes do Run da 0008 (sem `dias` e sem as colunas novas de `travadas`) a linha não aparece e o erro fica só no console.
 let semana = null, noite = null;   // noite: o dia "AAAA-MM-DD" sobre o qual a pergunta está aberta
+// A resposta da noite fica no aparelho até subir: sem rede, não se perde (passagem da Fase 8)
+const respostaGuardada = criarRespostaGuardada({
+  ler: () => JSON.parse(localStorage.getItem(RESPOSTA_DA_NOITE)),
+  gravar: (v) => localStorage.setItem(RESPOSTA_DA_NOITE, JSON.stringify(v)),
+  apagar: () => localStorage.removeItem(RESPOSTA_DA_NOITE),
+});
+// Voltar do segundo plano consulta o banco no máximo uma vez a cada 5 min (passagem da Fase 8: era a cada volta)
+const podePerguntar = aCada(5 * 60000);
+addEventListener('online', () => { if (estado.usuario) respostaGuardada.enviar(dados.mudarDia).then((subiu) => subiu && carregarSemana()); });
 async function carregarSemana({ perguntar = false } = {}) {
   const agora = new Date(), hoje = diaLocal(agora), { inicio } = semanaDe(hoje);
   try {
+    await respostaGuardada.enviar(dados.mudarDia);   // uma resposta que não subiu antes (sem rede) sobe antes de contar
     if (perguntar) await dados.abrirDia(hoje);
     // dias: desde 7 antes da segunda (a pergunta pode ser sobre o último dia aberto); travadas: desde a véspera da segunda (o fuso)
     const [travadas, dias] = await Promise.all([dados.travadasDesde(`${diaAnterior(inicio)}T00:00:00Z`), dados.diasDesde(semanaDe(diaAnterior(inicio)).inicio)]);
@@ -603,8 +617,9 @@ async function responderNoite(vezes) {
   noite = null;
   fecharFolha();
   if (!dia || vezes === null) return;
-  try { await dados.mudarDia(dia, respostaDaNoite({ vezes })); await carregarSemana(); }
-  catch (erro) { console.error(erro); avisar('Não salvou: sem internet ou o servidor não respondeu.'); }
+  // guarda antes de mandar: sem rede, a resposta fica no aparelho e sobe quando a rede volta (ou na próxima contagem)
+  respostaGuardada.guardar(dia, respostaDaNoite({ vezes }));
+  if (await respostaGuardada.enviar(dados.mudarDia)) await carregarSemana();
 }
 
 // ---------- Sem internet (T035; FR-022): a cópia da última vez fica no aparelho, e o app abre com ela ----------
@@ -652,6 +667,7 @@ async function entrar(usuario) {
   ir('assistente', true);
   document.body.dataset.pronto = '1';
   aoAbrirOTravei();
+  podePerguntar();
   carregarSemana({ perguntar: true });
 }
 // Abertas + feitas desde segunda (o Hoje mostra as feitas de hoje, riscadas)
@@ -683,7 +699,7 @@ function ligar() {
   tema.aplicar();
   ligarAviso();
   ligarToques();
-  ligarTelaTravei({ mostrar: () => ir('travei'), fechar: () => { voltar(); desenharTudo(); } });
+  ligarTelaTravei({ mostrar: () => ir('travei'), fechar: () => { voltar(); desenharTudo(); }, abrirApoio: () => { apoioPeloTravei = true; abrirFolha('apoio'); } });
   $('entrar').addEventListener('click', pedirLogin);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && vistaFolha) fecharFolha(); });
   window.addEventListener('online', () => { if (estado.usuario && !estado.carregadoEm) entrar(estado.usuario); });
@@ -698,7 +714,7 @@ function ligar() {
     // valem também aqui, e não só quando o app abre do zero (revisão T037, achado 6; FR-001, FR-020)
     calcularDestaque();
     if (atual === 'assistente') desenharInicio();
-    carregarSemana({ perguntar: true });
+    if (podePerguntar()) carregarSemana({ perguntar: true });
   });
   // Para os testes e as fotos (testes/app-falso.html): ir a uma tela, abrir a folha ou a tarefa
   window.__assistente = { ir: (v) => (COM_TELA.has(v) || vista(v) ? ir(v) : irSecao(v)), abrirFolha, abrirTarefa };
@@ -714,7 +730,8 @@ async function comecar() {
   dados.iniciar();
   const { data } = await comTempo(dados.banco.auth.getSession());
   if (location.search.includes('code=')) history.replaceState(null, '', location.pathname);
-  dados.banco.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT' && estado.usuario) mostrarEntrar(); });
+  // Saiu da conta (aqui ou em outra aba): o que é dela sai do aparelho antes da tela de entrar
+  dados.banco.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT' && estado.usuario) { limparAoSair({ aparelho: localStorage, apagarRascunhos }); mostrarEntrar(); } });
   if (data.session) await entrar(data.session.user);
   else mostrarEntrar();
 }
