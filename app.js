@@ -3,7 +3,7 @@
 // Com dado de verdade: Início (Assistente), Hoje, a tarefa aberta, o Travei (travei.js) e o que já funciona em Configurações.
 // O resto que o protótipo mostra aparece igual e, ao tocar, abre "Ainda sem tela" (Rafael: "A, como no protótipo").
 import { diaPorExtenso, interpretar, somarDias, deISO, hojeISO } from './datas.js';
-import { segundaDaSemana } from './calculos.js';
+import { segundaDaSemana, nomeNovo } from './calculos.js';
 import * as dados from './dados.js';
 import { estado, aoMudar, fixarSecoes, alternarFeita, anotar, mudar, moverPara } from './estado.js';
 import { $, el, svg, comIcone, avisar, ligarAviso, mostrarEstado } from './ui.js';
@@ -342,6 +342,7 @@ function desenharFolha() {
     f.setAttribute('aria-label', 'Mais ações');
     conteudo = [...topo('Mais ações'),
       acao('Abrir a tarefa', null, { 'data-abrir-tarefa': true }),
+      acao('Renomear', null, { 'data-vista': 'renomear' }),
       acao('Travei', 'Conte o que está acontecendo; o Assistente sugere um passo pequeno.', { 'data-travei': true }),
       noHoje ? acao('Mudar a parte do dia', `Hoje: ${PARTES[noHoje]}. O mesmo que arrastar.`, { 'data-vista': 'parte' }) : null,
       acao('Mover para…', 'Escolher o lugar na árvore, com um toque.', { 'data-sem-tela': 'Mover para…' }),
@@ -368,6 +369,20 @@ function desenharFolha() {
       el('div', { classe: 'grade noite' }, [['Nenhuma', 0], ['1', 1], ['2', 2], ['3', 3], ['4 ou mais', 4]].map(([n, k]) =>
         el('button', { type: 'button', classe: 'btn', 'data-noite': k }, n))),
       el('div', { classe: 'mt-p' }, el('button', { type: 'button', classe: 'btn', 'data-noite': 'pular' }, 'Pular'))];
+  } else if (v === 'renomear') {
+    const t = tarefa(tarefaMais);
+    f.setAttribute('aria-label', 'Renomear');
+    const campo = el('input', { id: 'nome-novo', classe: 'campo', type: 'text', enterkeyhint: 'done', autocomplete: 'off', 'aria-label': 'Nome da tarefa' });
+    campo.value = t?.titulo || '';
+    const salvar = el('button', { type: 'button', classe: 'btn principal', disabled: true, onclick: () => {
+      const n = t && nomeNovo(campo.value, t.titulo);
+      fecharFolha();
+      if (n) mudar(t, { titulo: n }, { mensagem: `Renomeada · ${n}`, desfazer: { titulo: t.titulo } });
+    } }, 'Salvar');
+    campo.addEventListener('input', () => { salvar.disabled = !(t && nomeNovo(campo.value, t.titulo)); });
+    campo.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !salvar.disabled) salvar.click(); });
+    conteudo = [...topo('Renomear', 'mais'), campo, el('div', { classe: 'mt-p' }, salvar)];
+    setTimeout(() => { campo.focus(); campo.select(); }, 50);
   } else if (v === 'parte') {
     const t = tarefa(tarefaMais), agora = t && caixaNoHoje(t, opcoesDoHoje());
     f.setAttribute('aria-label', 'Mudar a parte do dia');

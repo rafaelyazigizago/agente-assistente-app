@@ -283,3 +283,9 @@ export function etiquetasEmUso(tarefas) {
 }
 // A paleta das cores (etiquetas, projetos e listas): nomes, não códigos; o tom de cada tema está no estilo.css.
 export const PALETA = ['ouro', 'laranja', 'vermelho', 'rosa', 'roxo', 'azul', 'ciano', 'verde', 'oliva', 'cinza'];
+
+// Renomear (Rafael, 12/11/2026: "renomear a tarefa depois de ser cadastrada"): sem espaços nas pontas; vazio ou igual = nada muda
+export function nomeNovo(texto, atual) {
+  const n = String(texto ?? '').trim();
+  return n && n !== String(atual ?? '').trim() ? n : null;
+}
